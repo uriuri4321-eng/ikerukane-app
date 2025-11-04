@@ -175,6 +175,10 @@
             display: block;
             margin-left: auto;
             margin-right: auto;
+            /* style.cssの.sendクラスの影響を上書き */
+            position: relative !important;
+            height: auto !important;
+            bottom: auto !important;
         }
         
         
@@ -238,7 +242,7 @@
         </div>
         
         <!-- 決定ボタン -->
-        <button type="button" class="send send-button">決定</button>
+        <button type="button" class="send-button">決定</button>
     </div>
 
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGIYP3GFzqnzQR7skCyMXMu5mljijKTp0&language=ja"></script>
