@@ -8,20 +8,86 @@
     <meta name="format-detection" content="telephone=no">
     <title>イケルカネ 検知</title>
     <link rel="stylesheet" href="./css/style.css">
+    <style>
+        #map {
+            height: 60vh;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .info-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .check-time, .check-money {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .check-time h4, .check-money h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .check-time h3, .check-money h3 {
+            margin: 0;
+            font-size: 24px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .check-location {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .check-location h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+        
+        .CurrentLocation {
+            font-size: 14px;
+            color: #333;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+    </style>
 </head>
 
 <body onload="javascript:init();">
 
-    <p class="mapclose" ><a href="map.html">×</a></p>
+    <p class="mapclose" ><a href="calendar.html">×</a></p>
     <div id="map"></div>
 
-    <div class="check-time">
-        <h4>残り時間</h2>
-        <h3 class="Time">:</h3>
+    <div class="info-container">
+        <div class="check-time">
+            <h4>残り時間</h4>
+            <h3 class="Time">:</h3>
+        </div>
+        <div class="check-money">
+            <h4>課金額</h4>
+            <h3 class="Money">円</h3>
+        </div>
     </div>
-    <div class="check-money">
-        <h4>課金額</h2>
-        <h3 class="Money">円</h3>
+    
+    <div class="check-location">
+        <h4>現在地</h4>
+        <div class="CurrentLocation">取得中...</div>
     </div>
 
     

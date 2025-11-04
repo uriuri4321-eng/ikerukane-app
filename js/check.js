@@ -16,6 +16,7 @@ console.log("check.js 読み込み時のデータ:", {
 
 const TimeElm = document.querySelector(".Time");
 const MoneyElm = document.querySelector(".Money");
+const LocationElm = document.querySelector(".CurrentLocation");
 MoneyElm.textContent = money + "円";
 
 let targetDate = null;
@@ -129,6 +130,9 @@ function getCurrentPositionForCheck() {
                 lng: currentLng,
                 accuracy: accuracy + "m"
             });
+
+            // 現在位置を表示
+            updateCurrentLocation(currentLat, currentLng);
 
             // 現在位置マーカーを追加（青）
             if (map) {
@@ -253,6 +257,29 @@ function updateTime() {
     TimeElm.style.fontWeight = "normal";
 }
 
+// 現在地を表示する関数
+function updateCurrentLocation(lat, lng) {
+    if (!LocationElm) return;
+    
+    // まず緯度経度を表示
+    LocationElm.textContent = `緯度: ${lat.toFixed(6)}\n経度: ${lng.toFixed(6)}`;
+    
+    // 逆ジオコーディングで住所を取得（Google Maps Geocoding API）
+    if (map && window.google) {
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: lat, lng: lng } }, function(results, status) {
+            if (status === 'OK' && results[0]) {
+                // 住所を取得できた場合
+                const address = results[0].formatted_address;
+                LocationElm.textContent = address;
+            } else {
+                // 住所が取得できない場合は緯度経度のまま
+                LocationElm.textContent = `緯度: ${lat.toFixed(6)}\n経度: ${lng.toFixed(6)}`;
+            }
+        });
+    }
+}
+
 function checkDistance() {
     if(!map || !targetMarker) return;
 
@@ -271,6 +298,9 @@ function checkDistance() {
             if(currentMarker) {
                 currentMarker.setPosition({lat: nowLat, lng: nowLng});
             }
+            
+            // 現在地表示を更新
+            updateCurrentLocation(nowLat, nowLng);
 
             // 100m以内に到達した場合
             if(distance < 0.1) { // 0.1km = 100m

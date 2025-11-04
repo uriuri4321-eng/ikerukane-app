@@ -24,8 +24,35 @@
     <img src="images/cloud1.png" class="cloud1">
     <img src="images/cloud2.png" class="cloud2">
 
-    <a href="register.html" class="Touroku">アカウント登録</a>
+    <a href="register.html" class="Touroku" id="registerLink">アカウント登録</a>
     
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="admin.html" style="color: #666; text-decoration: none; font-size: 12px;">管理者ログイン</a>
+    </div>
     
     <div id="map"></div>
+
+    <script>
+        // ページ読み込み時に登録済みかチェック
+        document.addEventListener('DOMContentLoaded', function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const currentUserId = localStorage.getItem('currentUserId');
+            const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+            
+            // 既にログイン済みの場合は自動的にカレンダーページにリダイレクト
+            if (isLoggedIn === 'true' && currentUserId) {
+                const currentUser = userAccounts.find(acc => acc.id.toString() === currentUserId);
+                if (currentUser) {
+                    // 登録済みユーザーは自動的にカレンダーへ
+                    window.location.href = 'calendar.html';
+                    return;
+                } else {
+                    // ユーザーが見つからない場合はログアウト状態に
+                    localStorage.removeItem('currentUserId');
+                    localStorage.removeItem('isLoggedIn');
+                }
+            }
+            // 未登録の場合は登録リンクを表示（既に表示されている）
+        });
+    </script>
 </body>

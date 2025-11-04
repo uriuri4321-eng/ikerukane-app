@@ -212,7 +212,10 @@
 <body>
   <div class="calendar-container">
     <div class="header-section">
-      <h2>📅 予定管理</h2>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">📅 予定管理</h2>
+        <button id="logoutBtn" style="background: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 20px; font-size: 12px; cursor: pointer;">ログアウト</button>
+      </div>
       <button id="reserveBtn" class="reserve-button">予定設定</button>
     </div>
     
@@ -227,6 +230,10 @@
         <label for="eventDeadlineInput">期日</label>
         <input type="datetime-local" id="eventDeadlineInput">
       </div>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+        <input type="checkbox" id="saveToHistory" style="width: 20px; height: 20px; cursor: pointer;">
+        <label for="saveToHistory" style="margin: 0; cursor: pointer; font-size: 14px;">履歴に保存する</label>
+      </div>
       <div class="form-buttons">
         <button id="saveEventBtn" class="btn btn-primary">設定</button>
         <button id="cancelEventBtn" class="btn btn-secondary">キャンセル</button>
@@ -238,6 +245,14 @@
       <h3>📅 現在の予定一覧</h3>
       <div id="eventsContainer">
         <!-- 現在の予定一覧がここに動的に表示されます -->
+      </div>
+    </div>
+    
+    <!-- 予定履歴セクション -->
+    <div class="events-list" style="margin-top: 30px;">
+      <h3>📚 予定履歴（再利用）</h3>
+      <div id="eventHistoryContainer" style="display: grid; gap: 10px; margin-top: 15px;">
+        <!-- 履歴がここに表示されます -->
       </div>
     </div>
     
@@ -255,15 +270,35 @@
   <script>
     // 最終ログイン日時を更新
     document.addEventListener('DOMContentLoaded', function() {
-      const userAccount = localStorage.getItem('userAccount');
-      if (userAccount) {
-        try {
-          const account = JSON.parse(userAccount);
-          account.lastLoginAt = new Date().toISOString();
-          localStorage.setItem('userAccount', JSON.stringify(account));
-        } catch (e) {
-          console.error('最終ログイン日時の更新エラー:', e);
+      const currentUserId = localStorage.getItem('currentUserId');
+      const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+      
+      if (currentUserId) {
+        const userIndex = userAccounts.findIndex(acc => acc.id.toString() === currentUserId);
+        if (userIndex !== -1) {
+          const now = new Date().toISOString();
+          userAccounts[userIndex].lastLoginAt = now;
+          localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+          
+          // 後方互換性のため、現在のアカウント情報も更新
+          localStorage.setItem('userAccount', JSON.stringify(userAccounts[userIndex]));
         }
+      }
+      
+      // ログアウトボタンのイベント
+      const logoutBtn = document.getElementById('logoutBtn');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+          if (confirm('ログアウトしますか？\n再度アカウント登録が必要になります。')) {
+            localStorage.removeItem('currentUserId');
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('userAccount');
+            // 予定データもクリア（オプション：残したい場合はコメントアウト）
+            // localStorage.removeItem('events');
+            // localStorage.removeItem('completedEvents');
+            window.location.href = 'index.html';
+          }
+        });
       }
     });
   </script>

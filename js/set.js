@@ -5,10 +5,13 @@ var lng = 141.53722572035184;
 
 function init() {
     // まず地図を仮の中心で作成
-    var map = new google.maps.Map(document.getElementById('map'), {
+    map = new google.maps.Map(document.getElementById('map'), {
         zoom: 17,
         center: {lat: lat, lng: lng}
     });
+    
+    // グローバルスコープに公開
+    window.map = map;
 
     marker = new google.maps.Marker({
         map: map,
@@ -16,6 +19,9 @@ function init() {
         draggable: true,
         title: '目的地をクリックして設定'
     });
+    
+    // グローバルスコープに公開
+    window.marker = marker;
 
     circle = new google.maps.Circle({
         map: map,
@@ -27,13 +33,21 @@ function init() {
         strokeOpacity: 0.8,
         strokeWeight: 2
     });
+    
+    // グローバルスコープに公開
+    window.circle = circle;
 
     map.addListener('click', function(e) {
         clickMap(e.latLng, map);
     });
 
-    // 現在地取得の改善
-    getCurrentLocation(map);
+    // 履歴から位置情報を読み込む（予定タイトルが一致する場合）
+    const hasHistory = loadHistoryLocation(map);
+
+    // 履歴がない場合のみ現在地を取得
+    if (!hasHistory) {
+        getCurrentLocation(map);
+    }
 }
 
 // 現在地取得関数（改善版）
@@ -220,7 +234,11 @@ window.addEventListener("load", () => {
     
     // 予定の期日は「選択中の予定」欄で表示済み（設定時間フィールドは削除）
 
-    const sendbutton = document.querySelector(".send");
+    const sendbutton = document.querySelector(".send-button");
+    if (!sendbutton) {
+        console.error("決定ボタンが見つかりません");
+        return;
+    }
     sendbutton.onclick = function() {
         const setmoney = Number(document.querySelector(".setmoney").value);
         const now = new Date();
@@ -242,6 +260,15 @@ window.addEventListener("load", () => {
         localStorage.setItem("money", setmoney);
         localStorage.setItem("date", eventDeadline); // 予定の期日を使用
         localStorage.setItem("eventTitle", eventTitle); // 予定タイトルも保存
+        
+        // 履歴に保存するチェックが入っている場合のみ、予定履歴に位置情報も保存
+        const saveToHistory = localStorage.getItem('saveToHistory') === 'true';
+        if (saveToHistory) {
+            saveEventLocationHistory(eventTitle, lat, lng);
+        }
+        
+        // チェック状態をクリア
+        localStorage.removeItem('saveToHistory');
 
         console.log("保存されたデータ:", {
             lat: lat,
@@ -255,4 +282,84 @@ window.addEventListener("load", () => {
         window.location.href = "check.html";
     }
 });
+
+// 予定履歴から位置情報を読み込む関数
+function loadHistoryLocation(map) {
+    const savedTitle = localStorage.getItem('savedHistoryTitle');
+    const savedLat = localStorage.getItem('savedHistoryLat');
+    const savedLng = localStorage.getItem('savedHistoryLng');
+    const currentTitle = localStorage.getItem('eventTitle');
+    
+    // 保存されたタイトルと現在のタイトルが一致し、位置情報がある場合
+    if (savedTitle && savedTitle === currentTitle && savedLat && savedLng) {
+        const historyLat = parseFloat(savedLat);
+        const historyLng = parseFloat(savedLng);
+        
+        if (!isNaN(historyLat) && !isNaN(historyLng)) {
+            // 位置情報を設定
+            lat = historyLat;
+            lng = historyLng;
+            
+            // マーカーとサークルを更新
+            if (marker) {
+                marker.setPosition({lat: lat, lng: lng});
+            }
+            if (circle) {
+                circle.setCenter({lat: lat, lng: lng});
+            }
+            
+            // 地図の中心を移動
+            map.setCenter({lat: lat, lng: lng});
+            map.setZoom(17);
+            
+            // グローバル変数を更新
+            window.lat = lat;
+            window.lng = lng;
+            
+            console.log('履歴から位置情報を読み込みました:', { lat, lng });
+            
+            // 使用後はクリア
+            localStorage.removeItem('savedHistoryLat');
+            localStorage.removeItem('savedHistoryLng');
+            localStorage.removeItem('savedHistoryTitle');
+            
+            return true; // 履歴があったことを返す
+        }
+    }
+    
+    return false; // 履歴がなかったことを返す
+}
+
+// 予定履歴に位置情報を保存する関数
+function saveEventLocationHistory(eventTitle, lat, lng) {
+    if (!eventTitle || !lat || !lng) return;
+    
+    // 予定履歴を取得
+    let eventHistory = JSON.parse(localStorage.getItem('eventLocationHistory') || '[]');
+    
+    // 既存の履歴を検索
+    const existingIndex = eventHistory.findIndex(item => item.title === eventTitle);
+    
+    if (existingIndex !== -1) {
+        // 既存の履歴を更新
+        eventHistory[existingIndex].lat = lat;
+        eventHistory[existingIndex].lng = lng;
+        eventHistory[existingIndex].lastUsed = new Date().toISOString();
+    } else {
+        // 新しい履歴を追加
+        eventHistory.push({
+            title: eventTitle,
+            lat: lat,
+            lng: lng,
+            lastUsed: new Date().toISOString()
+        });
+    }
+    
+    // 最新10件のみ保持（新しい順）
+    eventHistory.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed));
+    eventHistory = eventHistory.slice(0, 10);
+    
+    // localStorageに保存
+    localStorage.setItem('eventLocationHistory', JSON.stringify(eventHistory));
+}
 

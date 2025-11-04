@@ -218,19 +218,44 @@
         
         function loadAccounts() {
             // 全アカウント情報を取得
-            const accounts = [];
+            let accounts = [];
             
-            // localStorageから全てのキーを取得
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key === 'userAccount') {
-                    try {
-                        const accountData = JSON.parse(localStorage.getItem(key));
-                        accounts.push(accountData);
-                    } catch (e) {
-                        console.error('アカウントデータの読み込みエラー:', e);
-                    }
+            // userAccounts配列から取得（複数アカウント対応）
+            const userAccounts = localStorage.getItem('userAccounts');
+            if (userAccounts) {
+                try {
+                    accounts = JSON.parse(userAccounts);
+                } catch (e) {
+                    console.error('アカウントデータの読み込みエラー:', e);
                 }
+            }
+            
+            // 後方互換性：userAccountが存在する場合は追加（古い形式）
+            const oldAccount = localStorage.getItem('userAccount');
+            if (oldAccount) {
+                try {
+                    const oldAccountData = JSON.parse(oldAccount);
+                    // 既に配列に存在しない場合のみ追加
+                    if (!accounts.find(acc => acc.email === oldAccountData.email)) {
+                        // IDがない場合は追加
+                        if (!oldAccountData.id) {
+                            oldAccountData.id = Date.now();
+                        }
+                        accounts.push(oldAccountData);
+                    }
+                } catch (e) {
+                    console.error('古いアカウントデータの読み込みエラー:', e);
+                }
+            }
+            
+            // 重複を削除（メールアドレスで判定）
+            accounts = accounts.filter((account, index, self) =>
+                index === self.findIndex(a => a.email === account.email)
+            );
+            
+            // 更新されたアカウント一覧を保存
+            if (accounts.length > 0) {
+                localStorage.setItem('userAccounts', JSON.stringify(accounts));
             }
             
             // 統計情報を計算
@@ -249,27 +274,25 @@
             let totalPreventedAmount = 0;
             let totalFailedAmount = 0;
             
-            // 各アカウントの統計を集計（簡易版：現在のアカウントのみ）
-            const currentAccount = localStorage.getItem('userAccount');
-            if (currentAccount) {
-                try {
-                    const events = JSON.parse(localStorage.getItem('events') || '[]');
-                    const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
-                    
-                    totalEvents = events.length;
-                    totalCompleted = completedEvents.length;
-                    
-                    const successfulEvents = completedEvents.filter(e => e.status === 'completed');
-                    const failedEvents = completedEvents.filter(e => e.status === 'failed');
-                    
-                    totalSuccessful = successfulEvents.length;
-                    totalFailed = failedEvents.length;
-                    
-                    totalPreventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                    totalFailedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
-                } catch (e) {
-                    console.error('統計情報の計算エラー:', e);
-                }
+            // 全アカウントの統計を集計（現在は全アカウントで共有のデータを使用）
+            // 将来的には各アカウントごとにデータを分離できる
+            try {
+                const events = JSON.parse(localStorage.getItem('events') || '[]');
+                const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+                
+                totalEvents = events.length;
+                totalCompleted = completedEvents.length;
+                
+                const successfulEvents = completedEvents.filter(e => e.status === 'completed');
+                const failedEvents = completedEvents.filter(e => e.status === 'failed');
+                
+                totalSuccessful = successfulEvents.length;
+                totalFailed = failedEvents.length;
+                
+                totalPreventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
+                totalFailedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+            } catch (e) {
+                console.error('統計情報の計算エラー:', e);
             }
             
             // 統計サマリーを表示
@@ -317,8 +340,10 @@
             
             let html = '';
             
-            accounts.forEach((account, index) => {
-                // 各アカウントの統計情報を取得（簡易版：現在のアカウントのみ）
+            accounts.forEach((account) => {
+                // 各アカウントの統計情報を取得
+                // 現在は全アカウントでデータを共有しているため、同じ統計を表示
+                // 将来的にはユーザーIDでデータを分離できる
                 let accountStats = {
                     totalEvents: 0,
                     completedEvents: 0,
@@ -328,26 +353,23 @@
                     failedAmount: 0
                 };
                 
-                // 現在のアカウントの統計を表示
-                if (index === 0) {
-                    try {
-                        const events = JSON.parse(localStorage.getItem('events') || '[]');
-                        const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
-                        
-                        accountStats.totalEvents = events.length;
-                        accountStats.completedEvents = completedEvents.length;
-                        
-                        const successfulEvents = completedEvents.filter(e => e.status === 'completed');
-                        const failedEvents = completedEvents.filter(e => e.status === 'failed');
-                        
-                        accountStats.successfulEvents = successfulEvents.length;
-                        accountStats.failedEvents = failedEvents.length;
-                        
-                        accountStats.preventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                        accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
-                    } catch (e) {
-                        console.error('アカウント統計の計算エラー:', e);
-                    }
+                try {
+                    const events = JSON.parse(localStorage.getItem('events') || '[]');
+                    const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+                    
+                    accountStats.totalEvents = events.length;
+                    accountStats.completedEvents = completedEvents.length;
+                    
+                    const successfulEvents = completedEvents.filter(e => e.status === 'completed');
+                    const failedEvents = completedEvents.filter(e => e.status === 'failed');
+                    
+                    accountStats.successfulEvents = successfulEvents.length;
+                    accountStats.failedEvents = failedEvents.length;
+                    
+                    accountStats.preventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
+                    accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+                } catch (e) {
+                    console.error('アカウント統計の計算エラー:', e);
                 }
                 
                 const registeredDate = account.registeredAt ? new Date(account.registeredAt).toLocaleString('ja-JP') : '不明';

@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 初期表示
     displayEvents();
+    
+    // 予定履歴を表示
+    displayEventHistory();
 
     // 予約設定ボタンのクリックイベント
     reserveBtn.addEventListener('click', function() {
@@ -58,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
     saveBtn.addEventListener('click', function() {
         const title = titleInput.value.trim();
         const deadline = deadlineInput.value;
+        const saveToHistory = document.getElementById('saveToHistory').checked;
 
         if (!title || !deadline) {
             alert('タイトルと期日を入力してください。');
@@ -89,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 最新の予定情報を保存（map.htmlで使用）
         localStorage.setItem('eventTitle', title);
         localStorage.setItem('eventDeadline', deadline);
+        localStorage.setItem('saveToHistory', saveToHistory ? 'true' : 'false');
 
         eventForm.style.display = 'none';
         displayEvents(); // 一覧を更新
@@ -162,6 +167,96 @@ document.addEventListener('DOMContentLoaded', function() {
             savedEvents = savedEvents.filter(e => e.id != eventId);
             localStorage.setItem('events', JSON.stringify(savedEvents));
             displayEvents(); // 一覧を更新
+        }
+    };
+    
+    // 予定履歴の表示
+    function displayEventHistory() {
+        const historyContainer = document.getElementById('eventHistoryContainer');
+        if (!historyContainer) return;
+        
+        // 予定履歴を取得（位置情報を含む）
+        let eventHistory = JSON.parse(localStorage.getItem('eventLocationHistory') || '[]');
+        
+        // 完了した予定と現在の予定からもタイトルを取得（位置情報がない場合の補完）
+        const uniqueTitles = new Set(eventHistory.map(item => item.title));
+        
+        completedEvents.forEach(event => {
+            if (event.title && !uniqueTitles.has(event.title)) {
+                uniqueTitles.add(event.title);
+                eventHistory.push({
+                    title: event.title,
+                    lat: null,
+                    lng: null,
+                    lastUsed: event.start || event.createdAt || event.completedAt
+                });
+            }
+        });
+        
+        savedEvents.forEach(event => {
+            if (event.title && !uniqueTitles.has(event.title)) {
+                uniqueTitles.add(event.title);
+                eventHistory.push({
+                    title: event.title,
+                    lat: null,
+                    lng: null,
+                    lastUsed: event.start || event.createdAt
+                });
+            }
+        });
+        
+        if (eventHistory.length === 0) {
+            historyContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">履歴がありません</div>';
+            return;
+        }
+        
+        // 最後に使用された日時でソート（新しい順）
+        eventHistory.sort((a, b) => {
+            const dateA = new Date(a.lastUsed);
+            const dateB = new Date(b.lastUsed);
+            return dateB - dateA;
+        });
+        
+        // 最新10件のみ表示
+        const recentHistory = eventHistory.slice(0, 10);
+        
+        let html = '';
+        recentHistory.forEach((item, index) => {
+            const hasLocation = item.lat && item.lng;
+            const locationInfo = hasLocation ? '📍 位置情報あり' : '📍 位置情報なし';
+            html += `
+                <div class="event-item" style="background: #f8f9fa; padding: 12px; border-radius: 8px; cursor: pointer; border-left: 4px solid ${hasLocation ? '#4CAF50' : '#ccc'};" 
+                     onclick="useHistory('${item.title.replace(/'/g, "\\'")}', ${item.lat || 'null'}, ${item.lng || 'null'})">
+                    <div class="event-title" style="font-weight: bold; color: #333;">${item.title}</div>
+                    <div style="font-size: 12px; color: ${hasLocation ? '#4CAF50' : '#666'}; margin-top: 5px;">${locationInfo}</div>
+                </div>
+            `;
+        });
+        
+        historyContainer.innerHTML = html;
+    }
+    
+    // 履歴から予定を再利用
+    window.useHistory = function(title, lat, lng) {
+        titleInput.value = title;
+        // 履歴から再利用する場合は、デフォルトで履歴に保存するチェックを外す
+        const saveToHistoryCheckbox = document.getElementById('saveToHistory');
+        if (saveToHistoryCheckbox) {
+            saveToHistoryCheckbox.checked = false;
+        }
+        eventForm.style.display = 'block';
+        titleInput.focus();
+        deadlineInput.focus();
+        
+        // 位置情報がある場合は保存しておく（map.htmlで使用）
+        if (lat && lng) {
+            localStorage.setItem('savedHistoryLat', lat);
+            localStorage.setItem('savedHistoryLng', lng);
+            localStorage.setItem('savedHistoryTitle', title);
+        } else {
+            localStorage.removeItem('savedHistoryLat');
+            localStorage.removeItem('savedHistoryLng');
+            localStorage.removeItem('savedHistoryTitle');
         }
     };
 

@@ -98,6 +98,48 @@
             pointer-events: none;
         }
         
+        .search-container {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px;
+            border-radius: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        #searchBox {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        
+        #searchBox:focus {
+            border-color: #4CAF50;
+        }
+        
+        #searchBtn {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        #searchBtn:hover {
+            background: #45a049;
+        }
+        
         .help-tooltip.show {
             opacity: 1;
             visibility: visible;
@@ -213,10 +255,14 @@
         <div class="help-tab" id="helpTab">操作手順</div>
         <div class="help-tooltip" id="helpTooltip">
             <h4>🗺️ 目的地設定の手順</h4>
-            <p>1. 地図上の目的地をクリックしてマーカーを設定してください</p>
+            <p>1. 検索ボックスで場所を検索するか、地図上の目的地をクリックしてマーカーを設定してください</p>
             <p>2. 赤い円の範囲内（100m以内）に到達する必要があります</p>
             <p>3. 課金額を設定してください（最低100円）</p>
             <p>4. 「決定」ボタンを押して遅刻防止チェックを開始してください</p>
+        </div>
+        <div class="search-container">
+            <input type="text" id="searchBox" placeholder="場所を検索..." autocomplete="off">
+            <button id="searchBtn" type="button">🔍</button>
         </div>
         <div id="map"></div>
     </div>
@@ -245,7 +291,95 @@
         <button type="button" class="send-button">決定</button>
     </div>
 
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGIYP3GFzqnzQR7skCyMXMu5mljijKTp0&language=ja"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBGIYP3GFzqnzQR7skCyMXMu5mljijKTp0&libraries=places&language=ja"></script>
     <script src="js/set.js"></script>
+    <script>
+        // 検索機能の実装
+        let autocomplete;
+        let searchBox;
+        let searchBtn;
+        
+        function initSearch() {
+            searchBox = document.getElementById('searchBox');
+            searchBtn = document.getElementById('searchBtn');
+            
+            if (!searchBox || !window.google) return;
+            
+            // Autocomplete機能を初期化
+            autocomplete = new google.maps.places.Autocomplete(searchBox, {
+                types: ['establishment', 'geocode'],
+                componentRestrictions: { country: 'jp' }
+            });
+            
+            // 場所が選択された時の処理
+            autocomplete.addListener('place_changed', function() {
+                const place = autocomplete.getPlace();
+                if (!place.geometry) {
+                    alert('場所が見つかりませんでした。別のキーワードで検索してください。');
+                    return;
+                }
+                
+                // マップとマーカーを更新
+                if (window.marker && window.map) {
+                    const position = {
+                        lat: place.geometry.location.lat(),
+                        lng: place.geometry.location.lng()
+                    };
+                    
+                    window.lat = position.lat;
+                    window.lng = position.lng;
+                    
+                    window.marker.setPosition(position);
+                    window.circle.setCenter(position);
+                    
+                    // 地図の中心を移動
+                    window.map.setCenter(position);
+                    window.map.setZoom(17);
+                    
+                    // 検索ボックスをクリア
+                    searchBox.value = '';
+                }
+            });
+            
+            // 検索ボタンのイベント
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function() {
+                    const query = searchBox.value.trim();
+                    if (!query) return;
+                    
+                    // Geocoding APIで検索
+                    const geocoder = new google.maps.Geocoder();
+                    geocoder.geocode({ address: query + ', 日本' }, function(results, status) {
+                        if (status === 'OK' && results[0]) {
+                            const position = {
+                                lat: results[0].geometry.location.lat(),
+                                lng: results[0].geometry.location.lng()
+                            };
+                            
+                            if (window.marker && window.map) {
+                                window.lat = position.lat;
+                                window.lng = position.lng;
+                                
+                                window.marker.setPosition(position);
+                                window.circle.setCenter(position);
+                                
+                                window.map.setCenter(position);
+                                window.map.setZoom(17);
+                                
+                                searchBox.value = '';
+                            }
+                        } else {
+                            alert('場所が見つかりませんでした。別のキーワードで検索してください。');
+                        }
+                    });
+                });
+            }
+        }
+        
+        // ページ読み込み時に検索機能を初期化
+        window.addEventListener('load', function() {
+            setTimeout(initSearch, 1000); // 地図の初期化後に実行
+        });
+    </script>
 </body>
 </html>

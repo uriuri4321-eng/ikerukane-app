@@ -122,15 +122,36 @@
     </div>
 
     <script>
+        // ページ読み込み時に登録済みかチェック
+        document.addEventListener('DOMContentLoaded', function() {
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            const currentUserId = localStorage.getItem('currentUserId');
+            const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+            
+            // 既にログイン済みの場合はカレンダーページにリダイレクト
+            if (isLoggedIn === 'true' && currentUserId) {
+                const currentUser = userAccounts.find(acc => acc.id.toString() === currentUserId);
+                if (currentUser) {
+                    window.location.href = 'calendar.html';
+                    return;
+                }
+            }
+        });
+
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
-            const email = document.getElementById('email').value;
+            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             
             // バリデーション
+            if (!username || !email || !password) {
+                alert('すべての項目を入力してください。');
+                return;
+            }
+            
             if (password !== confirmPassword) {
                 alert('パスワードが一致しません。');
                 return;
@@ -141,14 +162,41 @@
                 return;
             }
             
-            // アカウント情報を保存（簡易版）
+            // メールアドレスの形式チェック
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('正しいメールアドレスを入力してください。');
+                return;
+            }
+            
+            // 既存のアカウント一覧を取得
+            let allAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+            
+            // メールアドレスの重複チェック
+            const existingAccount = allAccounts.find(acc => acc.email === email);
+            if (existingAccount) {
+                alert('このメールアドレスは既に登録されています。');
+                return;
+            }
+            
+            // 新しいアカウント情報を作成
+            const userId = Date.now(); // ユニークIDとしてタイムスタンプを使用
             const userData = {
+                id: userId,
                 username: username,
                 email: email,
-                registeredAt: new Date().toISOString()
+                password: password, // 実際の運用ではハッシュ化すべきですが、簡易版として保存
+                registeredAt: new Date().toISOString(),
+                lastLoginAt: new Date().toISOString()
             };
             
+            // アカウント一覧に追加
+            allAccounts.push(userData);
+            localStorage.setItem('userAccounts', JSON.stringify(allAccounts));
+            
+            // 現在のアカウント情報を保存（後方互換性のため）
             localStorage.setItem('userAccount', JSON.stringify(userData));
+            localStorage.setItem('currentUserId', userId.toString());
             localStorage.setItem('isLoggedIn', 'true');
             
             alert('アカウントが作成されました！');
