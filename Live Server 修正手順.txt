@@ -1,0 +1,46 @@
+============================================
+   Live Server エラー修正手順
+============================================
+
+【状況】
+localhost:5502 でエラーが出る
+
+【解決方法】
+
+ステップ1: 設定を修正
+.vscode/settings.json を以下のように変更：
+
+{
+    "liveServer.settings.port": 5502
+}
+
+（host の設定を削除しました）
+
+ステップ2: Live Serverを再起動
+1. VS Codeの右下のポート番号をクリック
+2. 「Go Live」を停止
+3. index.html を右クリック → 「Open with Live Server」
+
+ステップ3: 確認
+PCのブラウザで http://localhost:5502 が開くことを確認
+
+============================================
+
+【iPhoneからアクセスする場合】
+
+設定ファイルを次のように変更：
+{
+    "liveServer.settings.port": 5502,
+    "liveServer.settings.host": "0.0.0.0"
+}
+
+その場合：
+- PCからは → http://localhost:5502
+- iPhoneからは → http://[PCのIP]:5502
+
+ただし、PCで直接アクセスする際はlocalhostを使う必要があります。
+
+============================================
+
+
+

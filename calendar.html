@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title>イケルカネ 予定管理</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .calendar-container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    
+    .header-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .reserve-button {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 25px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-bottom: 30px;
+    }
+    
+    .reserve-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    
+    .event-form {
+      display: none;
+      background: rgba(255,255,255,0.95);
+      padding: 25px;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+    
+    .form-buttons {
+      text-align: center;
+      margin-top: 20px;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 10px;
+      transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary {
+      background: #4CAF50;
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #ccc;
+      color: white;
+    }
+    
+    .events-list {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .events-list h3 {
+      margin-top: 0;
+      color: #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .event-item {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .event-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .event-info {
+      flex-grow: 1;
+    }
+    
+    .event-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+    
+    .event-date {
+      color: #666;
+      font-size: 14px;
+    }
+    
+    .event-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .no-events {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 40px;
+    }
+    
+    /* 終了した予定リストのスタイル */
+    .completed-events-list {
+      margin-top: 30px;
+      background: rgba(248, 249, 250, 0.95);
+      border: 2px solid #e9ecef;
+    }
+    
+    .completed-events-list h3 {
+      color: #6c757d;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 10px;
+    }
+    
+    .completed-event {
+      background: #f8f9fa !important;
+      border-left: 6px solid #6c757d !important;
+      opacity: 0.8;
+    }
+    
+    .completed-event .event-title {
+      color: #6c757d;
+      text-decoration: line-through;
+    }
+    
+    .completed-event .event-date {
+      color: #6c757d;
+    }
+    
+    .completed-date {
+      color: #dc3545;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    
+    .completed-event .btn-primary {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar-container">
+    <div class="header-section">
+      <h2>📅 予定管理</h2>
+      <button id="reserveBtn" class="reserve-button">予定設定</button>
+    </div>
+    
+    <!-- 予定入力フォーム -->
+    <div id="eventForm" class="event-form">
+      <h3>予定詳細を入力</h3>
+      <div class="form-group">
+        <label for="eventTitleInput">予定タイトル</label>
+        <input type="text" id="eventTitleInput" placeholder="例：会議、打ち合わせ、約束">
+      </div>
+      <div class="form-group">
+        <label for="eventDeadlineInput">期日</label>
+        <input type="datetime-local" id="eventDeadlineInput">
+      </div>
+      <div class="form-buttons">
+        <button id="saveEventBtn" class="btn btn-primary">設定</button>
+        <button id="cancelEventBtn" class="btn btn-secondary">キャンセル</button>
+      </div>
+    </div>
+    
+    <!-- 現在の予定一覧 -->
+    <div class="events-list">
+      <h3>📅 現在の予定一覧</h3>
+      <div id="eventsContainer">
+        <!-- 現在の予定一覧がここに動的に表示されます -->
+      </div>
+    </div>
+    
+    <!-- 終了した予定一覧へのボタン -->
+    <div class="events-list" style="text-align: center; margin-top: 20px;">
+      <a href="completed.html" class="btn btn-secondary" style="text-decoration: none; display: inline-block;">
+        ✅ 終了した予定一覧を見る
+      </a>
+    </div>
+  </div>
+  
+  <footer>© 2025 イケルカネ</footer>
+
+  <script src="js/calendar.js"></script>
+</body>
+</html>

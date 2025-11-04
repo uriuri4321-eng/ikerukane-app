@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title>イケルカネ 終了した予定一覧</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    .calendar-container {
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 20px;
+    }
+    
+    .header-section {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .back-button {
+      background: linear-gradient(45deg, #6c757d, #5a6268);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+      margin-bottom: 30px;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .back-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    }
+    
+    .events-list {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .events-list h3 {
+      margin-top: 0;
+      color: #6c757d;
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 10px;
+    }
+    
+    .event-item {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .event-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .event-info {
+      flex-grow: 1;
+    }
+    
+    .event-title {
+      font-weight: bold;
+      color: #6c757d;
+      margin-bottom: 5px;
+      text-decoration: line-through;
+    }
+    
+    .event-date {
+      color: #6c757d;
+      font-size: 14px;
+    }
+    
+    .completed-date {
+      color: #dc3545;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 5px;
+    }
+    
+    .event-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 0 10px;
+      transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+    
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 4px;
+    }
+    
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .no-events {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+      padding: 40px;
+    }
+    
+    .stats-section {
+      background: rgba(248, 249, 250, 0.95);
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      text-align: center;
+    }
+    
+    .stat-item {
+      padding: 15px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #dc3545;
+      margin-bottom: 5px;
+    }
+    
+    .stat-label {
+      font-size: 14px;
+      color: #6c757d;
+    }
+    
+    /* タブのスタイル */
+    .tabs-container {
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    
+    .year-tabs, .month-tabs {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+    
+    .year-tab, .month-tab {
+      padding: 10px 20px;
+      border: 2px solid #6c757d;
+      border-radius: 20px;
+      background: white;
+      color: #6c757d;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    
+    .year-tab:hover, .month-tab:hover {
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .year-tab.active, .month-tab.active {
+      background: #6c757d;
+      color: white;
+      border-color: #6c757d;
+    }
+    
+    .event-item {
+      justify-content: flex-start;
+    }
+    
+    .event-actions {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="calendar-container">
+    <div class="header-section">
+      <h2>✅ 終了した予定一覧</h2>
+      <a href="calendar.html" class="back-button">← 予定管理に戻る</a>
+      <button class="back-button" style="background: linear-gradient(45deg, #dc3545, #c82333); margin-left: 10px;" onclick="resetCompletedEvents()">終了予定リストをリセット</button>
+    </div>
+    
+    <!-- 統計情報 -->
+    <div class="stats-section">
+      <h3>📊 統計情報</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number" style="color: #28a745;" id="successfulCount">0</div>
+          <div class="stat-label">成功した予定</div>
+          <div class="stat-number" style="color: #28a745; font-size: 18px; margin-top: 5px;" id="preventedAmount">¥0</div>
+          <div class="stat-label" style="font-size: 12px;">課金阻止額</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" style="color: #dc3545;" id="failedCount">0</div>
+          <div class="stat-label">失敗した予定</div>
+          <div class="stat-number" style="color: #dc3545; font-size: 18px; margin-top: 5px;" id="failedAmount">¥0</div>
+          <div class="stat-label" style="font-size: 12px;">累計失敗課金額</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 終了した予定一覧 -->
+    <div class="events-list">
+      <h3>終了した予定一覧</h3>
+      
+      <!-- 年タブ -->
+      <div class="tabs-container">
+        <div id="yearTabsContainer" class="year-tabs">
+          <!-- 年タブがここに動的に表示されます -->
+        </div>
+      </div>
+      
+      <!-- 月タブ -->
+      <div class="tabs-container">
+        <div id="monthTabsContainer" class="month-tabs">
+          <!-- 月タブがここに動的に表示されます -->
+        </div>
+      </div>
+      
+      <div id="completedEventsContainer">
+        <!-- 終了した予定一覧がここに動的に表示されます -->
+      </div>
+    </div>
+  </div>
+  
+  <footer>© 2025 イケルカネ</footer>
+
+  <script src="js/completed.js"></script>
+</body>
+</html>

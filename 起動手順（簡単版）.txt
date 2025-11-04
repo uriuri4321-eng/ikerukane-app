@@ -1,0 +1,45 @@
+============================================
+   イケルカネ iPhone起動ガイド（簡単版）
+============================================
+
+【最も簡単な方法】
+
+1. VS Codeをインストール（まだの場合）
+   https://code.visualstudio.com/
+
+2. Live Server拡張機能をインストール
+   VS Codeを開く
+   → 拡張機能アイコンをクリック
+   → 「Live Server」を検索してインストール
+
+3. サーバーを起動
+   index.htmlを右クリック
+   → 「Open with Live Server」を選択
+
+4. PCのIPアドレスを確認
+   GET_IP.batをダブルクリック
+
+5. iPhoneからアクセス
+   Safariで http://[IPアドレス]:5500 を開く
+
+============================================
+
+【Pythonを使う場合】
+
+1. Pythonをインストール
+   https://www.python.org/downloads/
+   ※「Add Python to PATH」にチェック！
+
+2. PCを再起動
+
+3. start-server.batをダブルクリック
+
+4. iPhoneからアクセス
+   http://[IPアドレス]:8000
+
+============================================
+
+
+
+
+

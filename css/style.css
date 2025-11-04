@@ -1,0 +1,252 @@
+@charset "UTF-8";
+
+html {
+    background-color: skyblue;
+    position: relative;
+    /* iOS Safari 100vh問題への対応 */
+    height: 100%;
+    height: -webkit-fill-available;
+}
+body {
+    width: 430px;
+    min-height: 100vh;
+    /* iOS Safari 100vh問題への対応 */
+    min-height: -webkit-fill-available;
+    margin-left: 50%;
+    transform: translate(-50%);
+    background-color: white;
+    position: relative;
+    /* iOS Safari対応 */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    /* テキスト選択を防止（ボタンやリンクの誤選択防止） */
+    -webkit-user-select: none;
+    user-select: none;
+    /* 端末の縁に張り付かないようにする余白 */
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top);
+    padding-right: 16px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+    padding-left: 16px;
+}
+
+/* index */
+.main-title {
+    font-family: "Nico Moji";
+    position: absolute;
+    top: 200px;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%);
+    z-index: 30;
+    font-size: 50px;
+}
+.catch {
+    font-size: 20px;
+    text-align: center;
+    position: absolute;
+    top: 320px;
+    left: 50%;
+    right: -50%;
+    transform: translate(-50%);
+    z-index: 30;
+}
+.cloud1, .cloud2 {
+    position: absolute;
+    width: 85%;
+    height: 85%;
+    opacity: 68%;
+    overflow: hidden;
+}
+.cloud1 {
+    z-index: 25;
+    left: -70px;
+    top: 20px;
+}
+.cloud2 {
+    z-index: 20;
+    right: -70px;
+    top: 0px;
+}
+.Touroku {
+    text-decoration: none;
+    background-color: slategrey;
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    margin-right: -50%;
+    transform: translate(-50%);
+    z-index: 30;
+}
+
+#map {
+    height: 60vh;
+    width: 100%;
+}
+
+.mapclose {
+    margin: 0;
+    margin-right: 10px;
+    text-align: right;
+    font-size: 25px;
+}
+.mapclose a {
+    width: auto;
+    height: 30px;
+    text-decoration: none;
+}
+.mapclose a:hover {
+    color: red;
+}
+
+
+.money, .datetime {
+    margin-left: 10px;
+}
+.money input, .datetime input {
+    height: 30px;
+}
+
+.send {
+    position: absolute;
+    width: 95%;
+    height: 50px;
+    bottom: 5px;
+    margin-left: 50%;
+    transform: translate(-50%);
+}
+
+/* ===== カレンダー画面 ===== */
+
+.calendar-container {
+    text-align: center;
+    margin-top: 60px;
+    padding: 0 20px;
+}
+
+.calendar-container h2 {
+    color: #333;
+    font-size: 22px;
+    margin-bottom: 20px;
+}
+
+.calendar-box {
+    display: inline-block;
+    background-color: #fff;
+    border: 2px solid #ADD8E6;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    width: 80%;
+    max-width: 500px;
+}
+
+.calendar-btn {
+    background-color: #ADD8E6;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    transition: 0.3s;
+}
+
+.calendar-btn:hover {
+    background-color: #9bcce0;
+}
+
+.event-list {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+}
+
+.event-list li {
+    background-color: #f8fbfc;
+    border-left: 6px solid #ADD8E6;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.event-list li:hover {
+    background-color: #e8f4f9;
+}
+
+footer {
+    text-align: center;
+    color: #888;
+    margin-top: 40px;
+    font-size: 14px;
+}
+
+/* iOS Safari対応 */
+/* リンクとボタンのタップハイライトを無効化 */
+a, button {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* 入力フィールドのフォントサイズを16px以上に設定（iOS Safariの自動ズーム防止） */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+    font-size: 16px !important;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-border-radius: 0;
+    border-radius: 0;
+    touch-action: manipulation;
+}
+
+/* テキスト選択を許可する必要がある要素 */
+input, textarea {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+/* iOS Safariのボタンスタイルをリセット */
+button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* iOS Safariでのスムーズスクロール */
+* {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ===== スマホ最適化（狭い画面で周囲に余白を持たせる） ===== */
+@media (max-width: 480px) {
+    body {
+        width: 94vw; /* 固定幅を少し縮め、左右に余白を確保 */
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .calendar-container {
+        padding-left: 0;
+        padding-right: 0;
+        margin-top: 40px;
+    }
+
+    .events-list,
+    .event-form,
+    .settings-section,
+    .event-info {
+        border-radius: 12px;
+    }
+}
