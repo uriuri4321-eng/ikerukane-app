@@ -252,5 +252,20 @@
   <footer>© 2025 イケルカネ</footer>
 
   <script src="js/calendar.js"></script>
+  <script>
+    // 最終ログイン日時を更新
+    document.addEventListener('DOMContentLoaded', function() {
+      const userAccount = localStorage.getItem('userAccount');
+      if (userAccount) {
+        try {
+          const account = JSON.parse(userAccount);
+          account.lastLoginAt = new Date().toISOString();
+          localStorage.setItem('userAccount', JSON.stringify(account));
+        } catch (e) {
+          console.error('最終ログイン日時の更新エラー:', e);
+        }
+      }
+    });
+  </script>
 </body>
 </html>
