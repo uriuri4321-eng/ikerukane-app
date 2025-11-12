@@ -266,13 +266,28 @@
   
   <footer>© 2025 イケルカネ</footer>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/calendar.js"></script>
   <script>
     // 最終ログイン日時を更新
     document.addEventListener('DOMContentLoaded', function() {
       const currentUserId = localStorage.getItem('currentUserId');
-      const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
       
+      // Firebase認証状態を更新
+      if (auth && db && currentUserId) {
+        db.collection('users').doc(currentUserId).update({
+          lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).catch((error) => {
+          console.error('Firestore更新エラー:', error);
+        });
+      }
+      
+      // localStorageも更新（フォールバック）
+      const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
       if (currentUserId) {
         const userIndex = userAccounts.findIndex(acc => acc.id.toString() === currentUserId);
         if (userIndex !== -1) {
@@ -289,14 +304,29 @@
       const logoutBtn = document.getElementById('logoutBtn');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', function() {
-          if (confirm('ログアウトしますか？\n再度アカウント登録が必要になります。')) {
-            localStorage.removeItem('currentUserId');
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('userAccount');
-            // 予定データもクリア（オプション：残したい場合はコメントアウト）
-            // localStorage.removeItem('events');
-            // localStorage.removeItem('completedEvents');
-            window.location.href = 'index.html';
+          if (confirm('ログアウトしますか？\n再度ログインが必要になります。')) {
+            // Firebase認証からログアウト
+            if (auth) {
+              auth.signOut().then(() => {
+                console.log('Firebaseからログアウトしました');
+                clearLocalStorage();
+              }).catch((error) => {
+                console.error('Firebaseログアウトエラー:', error);
+                clearLocalStorage();
+              });
+            } else {
+              clearLocalStorage();
+            }
+            
+            function clearLocalStorage() {
+              localStorage.removeItem('currentUserId');
+              localStorage.removeItem('isLoggedIn');
+              localStorage.removeItem('userAccount');
+              // 予定データもクリア（オプション：残したい場合はコメントアウト）
+              // localStorage.removeItem('events');
+              // localStorage.removeItem('completedEvents');
+              window.location.href = 'index.html';
+            }
           }
         });
       }

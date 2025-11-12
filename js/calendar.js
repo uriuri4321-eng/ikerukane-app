@@ -84,7 +84,10 @@ document.addEventListener('DOMContentLoaded', function() {
             end: deadline,
             allDay: false,
             createdAt: new Date().toISOString(),
-            status: 'active' // 予定の状態: active, completed, failed
+            status: 'active', // 予定の状態: active, completed, failed
+            lat: null, // 位置情報（後で設定）
+            lng: null, // 位置情報（後で設定）
+            money: null // 課金額（後で設定）
         };
 
         savedEvents.push(newEvent);
@@ -139,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="event-date">${dateStr}</div>
                     </div>
                     <div class="event-actions">
-                        <button class="btn btn-primary btn-small" onclick="selectEvent('${event.id}')">選択</button>
+                        <button class="btn btn-primary btn-small" onclick="selectEvent('${event.id}')">確認</button>
                         <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">削除</button>
                     </div>
                 </div>
@@ -150,14 +153,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    // 予定選択（map.htmlに遷移）
+    // 予定確認（check.htmlに遷移）
     window.selectEvent = function(eventId) {
-        const event = savedEvents.find(e => e.id == eventId);
+        // 最新の予定データを読み込み
+        const currentEvents = JSON.parse(localStorage.getItem('events') || '[]');
+        const event = currentEvents.find(e => e.id == eventId);
         if (event) {
+            // 予定情報をlocalStorageに保存
             localStorage.setItem('eventTitle', event.title);
             localStorage.setItem('eventDeadline', event.start);
-            alert(`予定「${event.title}」を選択しました。\n次に目的地を設定してください。`);
-            window.location.href = 'map.html';
+            
+            // 位置情報と課金額が設定されているか確認
+            if (event.lat && event.lng && event.money !== null) {
+                // 位置情報と課金額が設定されている場合は、check.htmlに直接遷移
+                localStorage.setItem('Lat', event.lat);
+                localStorage.setItem('Lng', event.lng);
+                localStorage.setItem('money', event.money);
+                localStorage.setItem('date', event.start);
+                
+                window.location.href = 'check.html';
+            } else {
+                // 位置情報が設定されていない場合は、map.htmlで設定を促す
+                alert(`予定「${event.title}」の目的地が設定されていません。\n目的地を設定してください。`);
+                window.location.href = 'map.html';
+            }
         }
     };
 

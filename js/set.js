@@ -261,6 +261,18 @@ window.addEventListener("load", () => {
         localStorage.setItem("date", eventDeadline); // 予定の期日を使用
         localStorage.setItem("eventTitle", eventTitle); // 予定タイトルも保存
         
+        // 対応する予定データに位置情報と課金額を保存
+        let savedEvents = JSON.parse(localStorage.getItem('events') || '[]');
+        const eventIndex = savedEvents.findIndex(e => 
+            e.title === eventTitle && e.start === eventDeadline
+        );
+        if (eventIndex !== -1) {
+            savedEvents[eventIndex].lat = lat;
+            savedEvents[eventIndex].lng = lng;
+            savedEvents[eventIndex].money = setmoney;
+            localStorage.setItem('events', JSON.stringify(savedEvents));
+        }
+        
         // 履歴に保存するチェックが入っている場合のみ、予定履歴に位置情報も保存
         const saveToHistory = localStorage.getItem('saveToHistory') === 'true';
         if (saveToHistory) {

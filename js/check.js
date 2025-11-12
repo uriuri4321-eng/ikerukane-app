@@ -51,6 +51,7 @@ if(!targetDateStr) {
 }
 
 let map, targetMarker, targetCircle, currentMarker;
+window.currentLocationCircle = null; // 現在位置の円をグローバルに保持
 const R = Math.PI / 180;
 
 function init() {
@@ -134,17 +135,44 @@ function getCurrentPositionForCheck() {
             // 現在位置を表示
             updateCurrentLocation(currentLat, currentLng);
 
-            // 現在位置マーカーを追加（青）
+            // 現在位置マーカーを追加（人のアイコン）
             if (map) {
+                // 人のアイコンをSVGで作成（シンプルな形）
+                const personIconSVG = {
+                    // 人のシルエット（頭と体）
+                    path: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+                    fillColor: '#4285F4', // Google Blue
+                    fillOpacity: 1,
+                    strokeColor: '#FFFFFF',
+                    strokeWeight: 2,
+                    scale: 1.2,
+                    anchor: new google.maps.Point(12, 24),
+                    rotation: 0
+                };
+                
                 currentMarker = new google.maps.Marker({
                     map: map,
                     position: {lat: currentLat, lng: currentLng},
                     title: '現在位置',
-                    icon: {
-                        url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
-                        scaledSize: new google.maps.Size(32, 32)
-                    }
+                    icon: personIconSVG,
+                    zIndex: 1000, // 他のマーカーより上に表示
+                    animation: google.maps.Animation.DROP // アニメーション効果
                 });
+                
+                // 現在位置の周りに円を表示（より目立つように）
+                if (!window.currentLocationCircle) {
+                    window.currentLocationCircle = new google.maps.Circle({
+                        map: map,
+                        center: {lat: currentLat, lng: currentLng},
+                        radius: 50, // 50メートル
+                        fillColor: '#4285F4',
+                        fillOpacity: 0.2,
+                        strokeColor: '#4285F4',
+                        strokeOpacity: 0.8,
+                        strokeWeight: 2,
+                        zIndex: 999
+                    });
+                }
 
                 // 地図の中心を現在位置と目的地の中間にする
                 const bounds = new google.maps.LatLngBounds();
@@ -297,6 +325,11 @@ function checkDistance() {
             // 現在位置マーカーを更新
             if(currentMarker) {
                 currentMarker.setPosition({lat: nowLat, lng: nowLng});
+            }
+            
+            // 現在位置の円も更新
+            if(window.currentLocationCircle) {
+                window.currentLocationCircle.setCenter({lat: nowLat, lng: nowLng});
             }
             
             // 現在地表示を更新
