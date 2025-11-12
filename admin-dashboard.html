@@ -232,12 +232,12 @@
             }
         }
         
-        function loadAccounts() {
+        async function loadAccounts() {
             // Firebaseから全アカウント情報を取得
             if (db) {
                 // Firestoreから全ユーザーを取得
                 db.collection('users').get()
-                    .then((querySnapshot) => {
+                    .then(async (querySnapshot) => {
                         let accounts = [];
                         querySnapshot.forEach((doc) => {
                             const data = doc.data();
@@ -262,23 +262,23 @@
                         });
                         
                         // 統計情報を計算
-                        calculateStats(accounts);
+                        await calculateStats(accounts);
                         
                         // アカウント一覧を表示
-                        displayAccounts(accounts);
+                        await displayAccounts(accounts);
                     })
-                    .catch((error) => {
+                    .catch(async (error) => {
                         console.error('Firestore読み込みエラー:', error);
                         // エラー時はlocalStorageから読み込む
-                        loadAccountsFromLocalStorage();
+                        await loadAccountsFromLocalStorage();
                     });
             } else {
                 // Firebaseが利用できない場合はlocalStorageから読み込む
-                loadAccountsFromLocalStorage();
+                await loadAccountsFromLocalStorage();
             }
         }
         
-        function loadAccountsFromLocalStorage() {
+        async function loadAccountsFromLocalStorage() {
             // 全アカウント情報を取得
             let accounts = [];
             
@@ -315,13 +315,13 @@
             );
             
             // 統計情報を計算
-            calculateStats(accounts);
+            await calculateStats(accounts);
             
             // アカウント一覧を表示
-            displayAccounts(accounts);
+            await displayAccounts(accounts);
         }
         
-        function calculateStats(accounts) {
+        async function calculateStats(accounts) {
             const totalAccounts = accounts.length;
             let totalEvents = 0;
             let totalCompleted = 0;
@@ -330,23 +330,48 @@
             let totalPreventedAmount = 0;
             let totalFailedAmount = 0;
             
-            // 全アカウントの統計を集計（現在は全アカウントで共有のデータを使用）
-            // 将来的には各アカウントごとにデータを分離できる
+            // Firestoreから全ユーザーの課金情報を取得
+            if (db) {
+                try {
+                    const penaltiesSnapshot = await db.collection('penalties').get();
+                    penaltiesSnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.status === 'failed' && data.amount) {
+                            totalFailed++;
+                            totalFailedAmount += data.amount;
+                        }
+                    });
+                    console.log('Firestoreから課金情報を取得しました:', totalFailed, '件、合計:', totalFailedAmount, '円');
+                } catch (error) {
+                    console.error('Firestoreからの課金情報取得エラー:', error);
+                }
+            }
+            
+            // 全アカウントの統計を集計（localStorageからも取得）
             try {
-                const events = JSON.parse(localStorage.getItem('events') || '[]');
-                const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
-                
-                totalEvents = events.length;
-                totalCompleted = completedEvents.length;
-                
-                const successfulEvents = completedEvents.filter(e => e.status === 'completed');
-                const failedEvents = completedEvents.filter(e => e.status === 'failed');
-                
-                totalSuccessful = successfulEvents.length;
-                totalFailed = failedEvents.length;
-                
-                totalPreventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                totalFailedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+                // 全ユーザーのデータを集計
+                const keys = Object.keys(localStorage);
+                keys.forEach(key => {
+                    if (key.startsWith('events_')) {
+                        const events = JSON.parse(localStorage.getItem(key) || '[]');
+                        totalEvents += events.length;
+                    }
+                    if (key.startsWith('completedEvents_')) {
+                        const completedEvents = JSON.parse(localStorage.getItem(key) || '[]');
+                        totalCompleted += completedEvents.length;
+                        
+                        const successfulEvents = completedEvents.filter(e => e.status === 'completed');
+                        const failedEvents = completedEvents.filter(e => e.status === 'failed');
+                        
+                        totalSuccessful += successfulEvents.length;
+                        // Firestoreから取得した失敗数と重複しないように、localStorageの失敗数はカウントしない
+                        // totalFailed += failedEvents.length;
+                        
+                        totalPreventedAmount += successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
+                        // Firestoreから取得した課金額と重複しないように、localStorageの課金額はカウントしない
+                        // totalFailedAmount += failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+                    }
+                });
             } catch (e) {
                 console.error('統計情報の計算エラー:', e);
             }
@@ -429,7 +454,7 @@
             }
         }
         
-        function displayAccounts(accounts) {
+        async function displayAccounts(accounts) {
             const accountsList = document.getElementById('accountsList');
             
             if (accounts.length === 0) {
@@ -439,10 +464,31 @@
             
             let html = '';
             
-            accounts.forEach((account) => {
+            // Firestoreから全ユーザーの課金情報を取得
+            let penaltiesByUser = {};
+            if (db) {
+                try {
+                    const penaltiesSnapshot = await db.collection('penalties').get();
+                    penaltiesSnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        if (data.userId && data.status === 'failed' && data.amount) {
+                            if (!penaltiesByUser[data.userId]) {
+                                penaltiesByUser[data.userId] = {
+                                    count: 0,
+                                    totalAmount: 0
+                                };
+                            }
+                            penaltiesByUser[data.userId].count++;
+                            penaltiesByUser[data.userId].totalAmount += data.amount;
+                        }
+                    });
+                } catch (error) {
+                    console.error('Firestoreからの課金情報取得エラー:', error);
+                }
+            }
+            
+            for (const account of accounts) {
                 // 各アカウントの統計情報を取得
-                // 現在は全アカウントでデータを共有しているため、同じ統計を表示
-                // 将来的にはユーザーIDでデータを分離できる
                 let accountStats = {
                     totalEvents: 0,
                     completedEvents: 0,
@@ -452,9 +498,13 @@
                     failedAmount: 0
                 };
                 
+                // localStorageからユーザーごとのデータを取得
                 try {
-                    const events = JSON.parse(localStorage.getItem('events') || '[]');
-                    const completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+                    const eventsKey = `events_${account.id}`;
+                    const completedEventsKey = `completedEvents_${account.id}`;
+                    
+                    const events = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                    const completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
                     
                     accountStats.totalEvents = events.length;
                     accountStats.completedEvents = completedEvents.length;
@@ -463,12 +513,20 @@
                     const failedEvents = completedEvents.filter(e => e.status === 'failed');
                     
                     accountStats.successfulEvents = successfulEvents.length;
-                    accountStats.failedEvents = failedEvents.length;
+                    // localStorageの失敗数は表示しない（Firestoreのデータを優先）
+                    // accountStats.failedEvents = failedEvents.length;
                     
                     accountStats.preventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                    accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+                    // localStorageの課金額は表示しない（Firestoreのデータを優先）
+                    // accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
                 } catch (e) {
                     console.error('アカウント統計の計算エラー:', e);
+                }
+                
+                // Firestoreから取得した課金情報を設定
+                if (penaltiesByUser[account.id]) {
+                    accountStats.failedEvents = penaltiesByUser[account.id].count;
+                    accountStats.failedAmount = penaltiesByUser[account.id].totalAmount;
                 }
                 
                 const registeredDate = account.registeredAt ? new Date(account.registeredAt).toLocaleString('ja-JP') : '不明';

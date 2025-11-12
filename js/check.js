@@ -410,6 +410,26 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
             // localStorageに保存（ユーザーごと）
             localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
             localStorage.setItem(completedEventsKey, JSON.stringify(completedEvents));
+            
+            // Firestoreに課金情報を保存（失敗時のみ）
+            if (status === 'failed' && penaltyAmount > 0 && db) {
+                const penaltyData = {
+                    userId: currentUserId,
+                    amount: penaltyAmount,
+                    eventTitle: eventTitle,
+                    eventDeadline: eventDeadline,
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    status: 'failed'
+                };
+                
+                db.collection('penalties').add(penaltyData)
+                    .then((docRef) => {
+                        console.log('Firestoreに課金情報を保存しました:', docRef.id);
+                    })
+                    .catch((error) => {
+                        console.error('Firestoreへの課金情報保存エラー:', error);
+                    });
+            }
         }
     }
 }
