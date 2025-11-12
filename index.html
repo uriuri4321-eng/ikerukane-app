@@ -31,8 +31,9 @@
     <img src="images/cloud1.png" class="cloud1">
     <img src="images/cloud2.png" class="cloud2">
 
-    <div id="loginSection" style="display: none;">
-        <div style="max-width: 400px; margin: 50px auto; padding: 30px; background: rgba(255, 255, 255, 0.95); border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);">
+    <div id="loginSection" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; overflow-y: auto;">
+        <div style="max-width: 400px; margin: 50px auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); position: relative; z-index: 1001;">
+            <button id="closeLoginSection" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; z-index: 1002;">×</button>
             <h2 style="text-align: center; margin-bottom: 30px; color: #333;">🔐 ログイン</h2>
             
             <!-- Googleアカウントでログイン -->
@@ -59,13 +60,9 @@
         </div>
     </div>
     
-    <div style="text-align: center; margin-top: 20px;">
-        <a href="#" id="showLoginLink" style="color: #666; text-decoration: none; font-size: 14px; margin-right: 20px;">ログイン</a>
-        <a href="register.html" class="Touroku" id="registerLink">アカウント登録</a>
-    </div>
-    
-    <div style="text-align: center; margin-top: 20px;">
-        <a href="admin.html" style="color: #666; text-decoration: none; font-size: 12px;">管理者ログイン</a>
+    <div style="text-align: center; position: absolute; bottom: 80px; left: 50%; transform: translate(-50%); z-index: 30; display: flex; flex-direction: column; gap: 15px; width: 200px; align-items: center;">
+        <button id="showLoginButton" style="text-decoration: none; background-color: slategrey; color: white; padding: 10px; border-radius: 10px; border: none; cursor: pointer; width: 200px; font-size: 16px; position: static; transform: none; margin: 0; box-sizing: border-box;">ログイン</button>
+        <a href="register.html" id="registerLink" style="text-decoration: none; background-color: slategrey; color: white; padding: 10px; border-radius: 10px; width: 200px; text-align: center; display: block; position: static; transform: none; margin: 0; font-size: 16px; box-sizing: border-box;">アカウント登録</a>
     </div>
     
     <div id="map"></div>
@@ -106,7 +103,13 @@
                                     localStorage.setItem('currentUserId', user.uid);
                                     localStorage.setItem('isLoggedIn', 'true');
                                     localStorage.setItem('userAccount', JSON.stringify(userData));
-                                    window.location.href = 'calendar.html';
+                                    
+                                    // 管理者メールアドレスの場合は管理ページに遷移
+                                    if (userData.email === 'uriuri4321@gmail.com') {
+                                        window.location.href = 'admin-dashboard.html';
+                                    } else {
+                                        window.location.href = 'calendar.html';
+                                    }
                                 }
                             });
                     } else {
@@ -205,7 +208,13 @@
                                 localStorage.setItem('userAccount', JSON.stringify(userData));
                                 
                                 alert('ログインしました！');
-                                window.location.href = 'calendar.html';
+                                
+                                // 管理者メールアドレスの場合は管理ページに遷移
+                                if (userData.email === 'uriuri4321@gmail.com') {
+                                    window.location.href = 'admin-dashboard.html';
+                                } else {
+                                    window.location.href = 'calendar.html';
+                                }
                             } else {
                                 alert('ユーザー情報が見つかりませんでした。');
                             }
@@ -240,7 +249,13 @@
                         }
                         
                         alert('ログインしました！');
-                        window.location.href = 'calendar.html';
+                        
+                        // 管理者メールアドレスの場合は管理ページに遷移
+                        if (user.email === 'uriuri4321@gmail.com') {
+                            window.location.href = 'admin-dashboard.html';
+                        } else {
+                            window.location.href = 'calendar.html';
+                        }
                     } else {
                         alert('メールアドレスまたはパスワードが正しくありません。');
                     }
@@ -253,17 +268,30 @@
                     e.preventDefault();
                     loginSection.style.display = 'none';
                     if (registerLink) registerLink.style.display = 'block';
+                    if (showLoginButton) showLoginButton.style.display = 'block';
                 });
             }
             
-            // 「ログイン」リンクのクリック
-            const showLoginLink = document.getElementById('showLoginLink');
-            if (showLoginLink) {
-                showLoginLink.addEventListener('click', function(e) {
+            // 「ログイン」ボタンのクリック
+            const showLoginButton = document.getElementById('showLoginButton');
+            if (showLoginButton) {
+                showLoginButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     loginSection.style.display = 'block';
                     if (registerLink) registerLink.style.display = 'none';
+                    if (showLoginButton) showLoginButton.style.display = 'none';
                     document.getElementById('loginEmail').focus();
+                });
+            }
+            
+            // ログインセクションを閉じるボタン
+            const closeLoginSection = document.getElementById('closeLoginSection');
+            if (closeLoginSection) {
+                closeLoginSection.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    loginSection.style.display = 'none';
+                    if (registerLink) registerLink.style.display = 'block';
+                    if (showLoginButton) showLoginButton.style.display = 'block';
                 });
             }
         }
@@ -301,30 +329,40 @@
                         
                         // Firestoreにユーザー情報を保存（初回ログイン時）
                         const userRef = db.collection('users').doc(user.uid);
-                        userRef.get().then((doc) => {
+                        return userRef.get().then((doc) => {
                             if (!doc.exists) {
                                 // 新規ユーザーの場合
-                                userRef.set({
+                                const userData = {
                                     id: user.uid,
                                     username: user.displayName || 'Googleユーザー',
                                     email: user.email,
                                     registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
                                     lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
                                     provider: 'google'
-                                });
+                                };
+                                return userRef.set(userData).then(() => userData);
                             } else {
                                 // 既存ユーザーの場合、最終ログイン日時を更新
-                                userRef.update({
+                                const userData = doc.data();
+                                return userRef.update({
                                     lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
-                                });
+                                }).then(() => userData);
                             }
-                            
+                        })
+                        .then((userData) => {
                             // localStorageにも保存
                             localStorage.setItem('currentUserId', user.uid);
                             localStorage.setItem('isLoggedIn', 'true');
+                            localStorage.setItem('userAccount', JSON.stringify(userData));
                             
                             alert('ログインしました！');
-                            window.location.href = 'calendar.html';
+                            
+                            // 管理者メールアドレスの場合は管理ページに遷移
+                            if (userData && userData.email === 'uriuri4321@gmail.com') {
+                                window.location.href = 'admin-dashboard.html';
+                            } else {
+                                window.location.href = 'calendar.html';
+                            }
                         });
                     })
                     .catch((error) => {

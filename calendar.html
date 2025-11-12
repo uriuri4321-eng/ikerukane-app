@@ -207,6 +207,130 @@
     .completed-event .btn-primary {
       display: none;
     }
+    
+    /* アカウントメニュー */
+    #accountMenu {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+    
+    .account-menu-content {
+      max-width: 500px;
+      margin: 50px auto;
+      padding: 30px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      position: relative;
+    }
+    
+    .account-menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e9ecef;
+      padding-bottom: 15px;
+    }
+    
+    .account-menu-header h3 {
+      margin: 0;
+      color: #333;
+    }
+    
+    .close-menu-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+    }
+    
+    .account-info-section {
+      margin-bottom: 25px;
+    }
+    
+    .account-info-section h4 {
+      color: #4CAF50;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    
+    .account-info-item {
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .account-info-item strong {
+      color: #666;
+      display: inline-block;
+      width: 120px;
+    }
+    
+    .account-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    .stat-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .stat-item .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #4CAF50;
+      margin-bottom: 5px;
+    }
+    
+    .stat-item .stat-label {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .menu-action-btn {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .menu-action-btn.view-completed {
+      background: #17a2b8;
+      color: white;
+    }
+    
+    .menu-action-btn.view-completed:hover {
+      background: #138496;
+    }
+    
+    .menu-action-btn.logout {
+      background: #dc3545;
+      color: white;
+    }
+    
+    .menu-action-btn.logout:hover {
+      background: #c82333;
+    }
   </style>
 </head>
 <body>
@@ -214,7 +338,7 @@
     <div class="header-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0;">📅 予定管理</h2>
-        <button id="logoutBtn" style="background: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 20px; font-size: 12px; cursor: pointer;">ログアウト</button>
+        <button id="accountBtn" style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 20px; font-size: 12px; cursor: pointer; position: relative;">アカウント</button>
       </div>
       <button id="reserveBtn" class="reserve-button">予定設定</button>
     </div>
@@ -256,11 +380,35 @@
       </div>
     </div>
     
-    <!-- 終了した予定一覧へのボタン -->
-    <div class="events-list" style="text-align: center; margin-top: 20px;">
-      <a href="completed.html" class="btn btn-secondary" style="text-decoration: none; display: inline-block;">
-        ✅ 終了した予定一覧を見る
-      </a>
+  </div>
+  
+  <!-- アカウントメニュー -->
+  <div id="accountMenu">
+    <div class="account-menu-content">
+      <div class="account-menu-header">
+        <h3>👤 アカウント情報</h3>
+        <button class="close-menu-btn" onclick="closeAccountMenu()">×</button>
+      </div>
+      
+      <div class="account-info-section">
+        <h4>📋 基本情報</h4>
+        <div id="accountBasicInfo">
+          <!-- アカウント基本情報がここに表示されます -->
+        </div>
+      </div>
+      
+      <div class="account-info-section">
+        <h4>📊 統計情報</h4>
+        <div id="accountStats" class="account-stats-grid">
+          <!-- 統計情報がここに表示されます -->
+        </div>
+      </div>
+      
+      <div class="account-info-section">
+        <h4>⚙️ 操作</h4>
+        <button class="menu-action-btn view-completed" onclick="viewCompletedEvents()">✅ 終了した予定一覧を見る</button>
+        <button class="menu-action-btn logout" onclick="logout()">🚪 ログアウト</button>
+      </div>
     </div>
   </div>
   
@@ -300,36 +448,132 @@
         }
       }
       
-      // ログアウトボタンのイベント
-      const logoutBtn = document.getElementById('logoutBtn');
-      if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-          if (confirm('ログアウトしますか？\n再度ログインが必要になります。')) {
-            // Firebase認証からログアウト
-            if (auth) {
-              auth.signOut().then(() => {
-                console.log('Firebaseからログアウトしました');
-                clearLocalStorage();
-              }).catch((error) => {
-                console.error('Firebaseログアウトエラー:', error);
-                clearLocalStorage();
-              });
-            } else {
-              clearLocalStorage();
-            }
-            
-            function clearLocalStorage() {
-              localStorage.removeItem('currentUserId');
-              localStorage.removeItem('isLoggedIn');
-              localStorage.removeItem('userAccount');
-              // 予定データもクリア（オプション：残したい場合はコメントアウト）
-              // localStorage.removeItem('events');
-              // localStorage.removeItem('completedEvents');
-              window.location.href = 'index.html';
-            }
-          }
+      // アカウントボタンのイベント
+      const accountBtn = document.getElementById('accountBtn');
+      if (accountBtn) {
+        // アカウント名を表示
+        const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+        const accountName = userAccount.username || userAccount.email || 'アカウント';
+        accountBtn.textContent = accountName.length > 10 ? accountName.substring(0, 10) + '...' : accountName;
+        
+        accountBtn.addEventListener('click', function() {
+          openAccountMenu();
         });
       }
+      
+      // アカウントメニューを開く
+      window.openAccountMenu = function() {
+        const menu = document.getElementById('accountMenu');
+        if (menu) {
+          menu.style.display = 'block';
+          loadAccountInfo();
+        }
+      };
+      
+      // アカウントメニューを閉じる
+      window.closeAccountMenu = function() {
+        const menu = document.getElementById('accountMenu');
+        if (menu) {
+          menu.style.display = 'none';
+        }
+      };
+      
+      // アカウント情報を読み込んで表示
+      function loadAccountInfo() {
+        const currentUserId = localStorage.getItem('currentUserId');
+        const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+        const eventsKey = `events_${currentUserId}`;
+        const completedEventsKey = `completedEvents_${currentUserId}`;
+        
+        // 基本情報を表示
+        const basicInfoHtml = `
+          <div class="account-info-item">
+            <strong>ユーザー名:</strong> ${userAccount.username || '未設定'}
+          </div>
+          <div class="account-info-item">
+            <strong>メールアドレス:</strong> ${userAccount.email || '未設定'}
+          </div>
+          <div class="account-info-item">
+            <strong>登録日時:</strong> ${userAccount.registeredAt ? new Date(userAccount.registeredAt).toLocaleString('ja-JP') : '不明'}
+          </div>
+          <div class="account-info-item">
+            <strong>最終ログイン:</strong> ${userAccount.lastLoginAt ? new Date(userAccount.lastLoginAt).toLocaleString('ja-JP') : '不明'}
+          </div>
+        `;
+        document.getElementById('accountBasicInfo').innerHTML = basicInfoHtml;
+        
+        // 統計情報を計算
+        const savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+        const completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+        
+        const successfulEvents = completedEvents.filter(e => e.status === 'completed');
+        const failedEvents = completedEvents.filter(e => e.status === 'failed');
+        
+        const totalPreventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
+        const totalFailedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
+        
+        const statsHtml = `
+          <div class="stat-item">
+            <div class="stat-value">${savedEvents.length}</div>
+            <div class="stat-label">現在の予定</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">${completedEvents.length}</div>
+            <div class="stat-label">終了した予定</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" style="color: #28a745;">${successfulEvents.length}</div>
+            <div class="stat-label">成功した予定</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" style="color: #dc3545;">${failedEvents.length}</div>
+            <div class="stat-label">失敗した予定</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" style="color: #28a745;">¥${totalPreventedAmount.toLocaleString()}</div>
+            <div class="stat-label">課金阻止額</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" style="color: #dc3545;">¥${totalFailedAmount.toLocaleString()}</div>
+            <div class="stat-label">失敗課金額</div>
+          </div>
+        `;
+        document.getElementById('accountStats').innerHTML = statsHtml;
+      }
+      
+      // 終了した予定一覧を表示
+      window.viewCompletedEvents = function() {
+        window.location.href = 'completed.html';
+      };
+      
+      // ログアウト
+      window.logout = function() {
+        if (confirm('ログアウトしますか？\n再度ログインが必要になります。')) {
+          // Firebase認証からログアウト
+          if (auth) {
+            auth.signOut().then(() => {
+              console.log('Firebaseからログアウトしました');
+            }).catch((error) => {
+              console.error('Firebaseログアウトエラー:', error);
+            });
+          }
+          
+          // localStorageをクリア
+          localStorage.removeItem('currentUserId');
+          localStorage.removeItem('isLoggedIn');
+          localStorage.removeItem('userAccount');
+          
+          // ログインページにリダイレクト
+          window.location.href = 'index.html';
+        }
+      };
+      
+      // メニュー外をクリックしたら閉じる
+      document.getElementById('accountMenu')?.addEventListener('click', function(e) {
+        if (e.target.id === 'accountMenu') {
+          closeAccountMenu();
+        }
+      });
     });
   </script>
 </body>

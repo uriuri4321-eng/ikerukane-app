@@ -7,9 +7,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const reserveBtn = document.getElementById('reserveBtn');
     const eventsContainer = document.getElementById('eventsContainer');
 
-    // 予定データの読み込み
-    let savedEvents = JSON.parse(localStorage.getItem('events') || '[]');
-    let completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+    // 現在のユーザーIDを取得
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId) {
+        alert('ログインが必要です');
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // ユーザーごとの予定データのキー
+    const eventsKey = `events_${currentUserId}`;
+    const completedEventsKey = `completedEvents_${currentUserId}`;
+
+    // 予定データの読み込み（ユーザーごと）
+    let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+    let completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+    
+    // 既存の共有されている予定履歴をリセット（全ユーザーで共有されていた履歴を削除）
+    if (localStorage.getItem('eventLocationHistory')) {
+        console.log('共有されている予定履歴をリセットします');
+        localStorage.removeItem('eventLocationHistory');
+    }
+    
+    // 全てのユーザーの予定履歴をリセット
+    function resetAllEventHistory() {
+        console.log('全てのユーザーの予定履歴をリセットします');
+        // localStorageの全てのキーを取得
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+            if (key.startsWith('eventLocationHistory_')) {
+                localStorage.removeItem(key);
+                console.log(`削除: ${key}`);
+            }
+        });
+    }
+    
+    // ページ読み込み時に一度だけ実行
+    resetAllEventHistory();
 
     // 期日が過ぎた予定を自動的に終了した予定リストに移動
     function moveExpiredEvents() {
@@ -35,9 +69,9 @@ document.addEventListener('DOMContentLoaded', function() {
         savedEvents = activeEvents;
         completedEvents = [...completedEvents, ...expiredEvents];
 
-        // localStorageに保存
-        localStorage.setItem('events', JSON.stringify(savedEvents));
-        localStorage.setItem('completedEvents', JSON.stringify(completedEvents));
+        // localStorageに保存（ユーザーごと）
+        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        localStorage.setItem(completedEventsKey, JSON.stringify(completedEvents));
     }
 
     // 初期処理：期日が過ぎた予定を移動
@@ -91,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         savedEvents.push(newEvent);
-        localStorage.setItem('events', JSON.stringify(savedEvents));
+        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
 
         // 最新の予定情報を保存（map.htmlで使用）
         localStorage.setItem('eventTitle', title);
@@ -155,8 +189,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 予定確認（check.htmlに遷移）
     window.selectEvent = function(eventId) {
-        // 最新の予定データを読み込み
-        const currentEvents = JSON.parse(localStorage.getItem('events') || '[]');
+        // 最新の予定データを読み込み（ユーザーごと）
+        const currentUserId = localStorage.getItem('currentUserId');
+        const eventsKey = `events_${currentUserId}`;
+        const currentEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
         const event = currentEvents.find(e => e.id == eventId);
         if (event) {
             // 予定情報をlocalStorageに保存
@@ -184,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.deleteEvent = function(eventId) {
         if (confirm('この予定を削除しますか？')) {
             savedEvents = savedEvents.filter(e => e.id != eventId);
-            localStorage.setItem('events', JSON.stringify(savedEvents));
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
             displayEvents(); // 一覧を更新
         }
     };
@@ -194,35 +230,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const historyContainer = document.getElementById('eventHistoryContainer');
         if (!historyContainer) return;
         
-        // 予定履歴を取得（位置情報を含む）
-        let eventHistory = JSON.parse(localStorage.getItem('eventLocationHistory') || '[]');
+        // 現在のユーザーIDを取得
+        const currentUserId = localStorage.getItem('currentUserId');
+        if (!currentUserId) {
+            historyContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">ログインが必要です</div>';
+            return;
+        }
         
-        // 完了した予定と現在の予定からもタイトルを取得（位置情報がない場合の補完）
-        const uniqueTitles = new Set(eventHistory.map(item => item.title));
-        
-        completedEvents.forEach(event => {
-            if (event.title && !uniqueTitles.has(event.title)) {
-                uniqueTitles.add(event.title);
-                eventHistory.push({
-                    title: event.title,
-                    lat: null,
-                    lng: null,
-                    lastUsed: event.start || event.createdAt || event.completedAt
-                });
-            }
-        });
-        
-        savedEvents.forEach(event => {
-            if (event.title && !uniqueTitles.has(event.title)) {
-                uniqueTitles.add(event.title);
-                eventHistory.push({
-                    title: event.title,
-                    lat: null,
-                    lng: null,
-                    lastUsed: event.start || event.createdAt
-                });
-            }
-        });
+        // ユーザーごとの予定履歴を取得（位置情報を含む）
+        // チェックボックスにチェックを入れた予定のみが履歴に保存される
+        const historyKey = `eventLocationHistory_${currentUserId}`;
+        let eventHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
         
         if (eventHistory.length === 0) {
             historyContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">履歴がありません</div>';
@@ -243,11 +261,14 @@ document.addEventListener('DOMContentLoaded', function() {
         recentHistory.forEach((item, index) => {
             const hasLocation = item.lat && item.lng;
             const locationInfo = hasLocation ? '📍 位置情報あり' : '📍 位置情報なし';
+            const escapedTitle = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             html += `
-                <div class="event-item" style="background: #f8f9fa; padding: 12px; border-radius: 8px; cursor: pointer; border-left: 4px solid ${hasLocation ? '#4CAF50' : '#ccc'};" 
-                     onclick="useHistory('${item.title.replace(/'/g, "\\'")}', ${item.lat || 'null'}, ${item.lng || 'null'})">
-                    <div class="event-title" style="font-weight: bold; color: #333;">${item.title}</div>
-                    <div style="font-size: 12px; color: ${hasLocation ? '#4CAF50' : '#666'}; margin-top: 5px;">${locationInfo}</div>
+                <div class="event-item" style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid ${hasLocation ? '#4CAF50' : '#ccc'}; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="flex: 1; cursor: pointer;" onclick="useHistory('${escapedTitle}', ${item.lat || 'null'}, ${item.lng || 'null'})">
+                        <div class="event-title" style="font-weight: bold; color: #333;">${item.title}</div>
+                        <div style="font-size: 12px; color: ${hasLocation ? '#4CAF50' : '#666'}; margin-top: 5px;">${locationInfo}</div>
+                    </div>
+                    <button onclick="deleteHistoryItem('${escapedTitle}'); event.stopPropagation();" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 10px;">削除</button>
                 </div>
             `;
         });
@@ -277,6 +298,31 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('savedHistoryLng');
             localStorage.removeItem('savedHistoryTitle');
         }
+    };
+    
+    // 予定履歴から項目を削除
+    window.deleteHistoryItem = function(title) {
+        if (!confirm(`「${title}」を履歴から削除しますか？`)) {
+            return;
+        }
+        
+        const currentUserId = localStorage.getItem('currentUserId');
+        if (!currentUserId) {
+            alert('ログインが必要です');
+            return;
+        }
+        
+        const historyKey = `eventLocationHistory_${currentUserId}`;
+        let eventHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
+        
+        // 該当する履歴を削除
+        eventHistory = eventHistory.filter(item => item.title !== title);
+        
+        // localStorageに保存
+        localStorage.setItem(historyKey, JSON.stringify(eventHistory));
+        
+        // 履歴を再表示
+        displayEventHistory();
     };
 
 });

@@ -3,8 +3,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const yearTabsContainer = document.getElementById('yearTabsContainer');
     const monthTabsContainer = document.getElementById('monthTabsContainer');
 
-    // 終了した予定データの読み込み
-    let completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+    // 現在のユーザーIDを取得
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId) {
+        alert('ログインが必要です');
+        window.location.href = 'index.html';
+        return;
+    }
+
+    // ユーザーごとの予定データのキー
+    const completedEventsKey = `completedEvents_${currentUserId}`;
+
+    // 終了した予定データの読み込み（ユーザーごと）
+    let completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
     
     // 選択中の年月
     let selectedYear = null;
@@ -193,7 +204,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 終了した予定リストをリセット
     window.resetCompletedEvents = function() {
         if (confirm('終了した予定リストを全て削除しますか？\nこの操作は取り消せません。')) {
-            localStorage.removeItem('completedEvents');
+            // ユーザーごとの予定データをリセット
+            localStorage.removeItem(completedEventsKey);
             completedEvents = [];
             // ページをリロードして反映
             location.reload();

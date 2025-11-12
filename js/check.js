@@ -365,14 +365,25 @@ function checkDistance() {
 
 // 予定の結果を記録する関数
 function recordEventResult(status, penaltyAmount, preventedAmount) {
+    // 現在のユーザーIDを取得
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId) {
+        console.warn('ユーザーIDが取得できません。予定の結果を記録できません。');
+        return;
+    }
+    
+    // ユーザーごとの予定データのキー
+    const eventsKey = `events_${currentUserId}`;
+    const completedEventsKey = `completedEvents_${currentUserId}`;
+    
     // 現在の予定情報を取得
     const eventTitle = localStorage.getItem('eventTitle');
     const eventDeadline = localStorage.getItem('eventDeadline');
     
     if (eventTitle && eventDeadline) {
-        // 現在の予定を検索して更新
-        let savedEvents = JSON.parse(localStorage.getItem('events') || '[]');
-        let completedEvents = JSON.parse(localStorage.getItem('completedEvents') || '[]');
+        // 現在の予定を検索して更新（ユーザーごと）
+        let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+        let completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
         
         // 現在の予定を検索
         const currentEventIndex = savedEvents.findIndex(event => 
@@ -396,9 +407,9 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
             // 終了した予定リストに追加
             completedEvents.push(event);
             
-            // localStorageに保存
-            localStorage.setItem('events', JSON.stringify(savedEvents));
-            localStorage.setItem('completedEvents', JSON.stringify(completedEvents));
+            // localStorageに保存（ユーザーごと）
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+            localStorage.setItem(completedEventsKey, JSON.stringify(completedEvents));
         }
     }
 }

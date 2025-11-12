@@ -261,16 +261,20 @@ window.addEventListener("load", () => {
         localStorage.setItem("date", eventDeadline); // 予定の期日を使用
         localStorage.setItem("eventTitle", eventTitle); // 予定タイトルも保存
         
-        // 対応する予定データに位置情報と課金額を保存
-        let savedEvents = JSON.parse(localStorage.getItem('events') || '[]');
-        const eventIndex = savedEvents.findIndex(e => 
-            e.title === eventTitle && e.start === eventDeadline
-        );
-        if (eventIndex !== -1) {
-            savedEvents[eventIndex].lat = lat;
-            savedEvents[eventIndex].lng = lng;
-            savedEvents[eventIndex].money = setmoney;
-            localStorage.setItem('events', JSON.stringify(savedEvents));
+        // 対応する予定データに位置情報と課金額を保存（ユーザーごと）
+        const currentUserId = localStorage.getItem('currentUserId');
+        if (currentUserId) {
+            const eventsKey = `events_${currentUserId}`;
+            let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            const eventIndex = savedEvents.findIndex(e => 
+                e.title === eventTitle && e.start === eventDeadline
+            );
+            if (eventIndex !== -1) {
+                savedEvents[eventIndex].lat = lat;
+                savedEvents[eventIndex].lng = lng;
+                savedEvents[eventIndex].money = setmoney;
+                localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+            }
         }
         
         // 履歴に保存するチェックが入っている場合のみ、予定履歴に位置情報も保存
@@ -346,8 +350,16 @@ function loadHistoryLocation(map) {
 function saveEventLocationHistory(eventTitle, lat, lng) {
     if (!eventTitle || !lat || !lng) return;
     
-    // 予定履歴を取得
-    let eventHistory = JSON.parse(localStorage.getItem('eventLocationHistory') || '[]');
+    // 現在のユーザーIDを取得
+    const currentUserId = localStorage.getItem('currentUserId');
+    if (!currentUserId) {
+        console.warn('ユーザーIDが取得できません。予定履歴を保存できません。');
+        return;
+    }
+    
+    // ユーザーごとの予定履歴を取得
+    const historyKey = `eventLocationHistory_${currentUserId}`;
+    let eventHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
     
     // 既存の履歴を検索
     const existingIndex = eventHistory.findIndex(item => item.title === eventTitle);
@@ -371,7 +383,7 @@ function saveEventLocationHistory(eventTitle, lat, lng) {
     eventHistory.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed));
     eventHistory = eventHistory.slice(0, 10);
     
-    // localStorageに保存
-    localStorage.setItem('eventLocationHistory', JSON.stringify(eventHistory));
+    // ユーザーごとのlocalStorageに保存
+    localStorage.setItem(historyKey, JSON.stringify(eventHistory));
 }
 

@@ -182,7 +182,7 @@
 <body>
     <div class="admin-header">
         <h1>🔐 管理者ダッシュボード</h1>
-        <a href="admin.html" class="logout-btn" onclick="logout()">ログアウト</a>
+        <a href="index.html" class="logout-btn" onclick="logout()">ログアウト</a>
     </div>
     
     <div class="dashboard-container">
@@ -203,10 +203,15 @@
     <script>
         // 管理者認証チェック
         document.addEventListener('DOMContentLoaded', function() {
-            const isAdminLoggedIn = localStorage.getItem('adminLoggedIn');
-            if (isAdminLoggedIn !== 'true') {
-                alert('管理者としてログインしてください。');
-                window.location.href = 'admin.html';
+            // 現在のユーザー情報を取得
+            const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+            const currentUserId = localStorage.getItem('currentUserId');
+            const isLoggedIn = localStorage.getItem('isLoggedIn');
+            
+            // ログインしていない、または管理者メールアドレスでない場合はリダイレクト
+            if (isLoggedIn !== 'true' || !currentUserId || userAccount.email !== 'uriuri4321@gmail.com') {
+                alert('管理者としてログインしてください。\n管理者メールアドレス（uriuri4321@gmail.com）でログインしてください。');
+                window.location.href = 'index.html';
                 return;
             }
             
@@ -215,9 +220,15 @@
         
         function logout() {
             if (confirm('ログアウトしますか？')) {
-                localStorage.removeItem('adminLoggedIn');
-                localStorage.removeItem('adminLoginTime');
-                window.location.href = 'admin.html';
+                // ログイン情報をクリア
+                localStorage.removeItem('currentUserId');
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('userAccount');
+                // Firebaseからもログアウト
+                if (auth) {
+                    auth.signOut();
+                }
+                window.location.href = 'index.html';
             }
         }
         
@@ -375,6 +386,49 @@
             document.getElementById('statsSummary').innerHTML = statsHtml;
         }
         
+        // アカウント削除機能
+        window.deleteAccount = async function(email, accountId) {
+            if (!confirm(`アカウント「${email}」を削除しますか？\nこの操作は取り消せません。`)) {
+                return;
+            }
+            
+            try {
+                // 1. Firebase Firestoreから削除
+                if (db && accountId) {
+                    await db.collection('users').doc(accountId).delete();
+                    console.log('Firestoreから削除しました:', accountId);
+                }
+                
+                // 2. Firebase Authenticationから削除（管理者権限が必要な場合）
+                // 注意: 通常のクライアント側からは削除できないため、Firebase Consoleから手動で削除する必要があります
+                
+                // 3. localStorageから削除
+                let userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+                userAccounts = userAccounts.filter(acc => acc.email !== email);
+                localStorage.setItem('userAccounts', JSON.stringify(userAccounts));
+                
+                // 4. 該当ユーザーの予定履歴も削除
+                const keys = Object.keys(localStorage);
+                keys.forEach(key => {
+                    if (key.startsWith('eventLocationHistory_')) {
+                        // ユーザーIDが一致する履歴を削除
+                        const userId = key.replace('eventLocationHistory_', '');
+                        if (userId === accountId || userAccounts.find(acc => acc.id === userId && acc.email === email)) {
+                            localStorage.removeItem(key);
+                        }
+                    }
+                });
+                
+                alert('アカウントを削除しました。\n注意: Firebase Authenticationからの削除はFirebase Consoleで手動で行ってください。');
+                
+                // アカウント一覧を再読み込み
+                loadAccounts();
+            } catch (error) {
+                console.error('アカウント削除エラー:', error);
+                alert('アカウントの削除中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
         function displayAccounts(accounts) {
             const accountsList = document.getElementById('accountsList');
             
@@ -422,11 +476,12 @@
                 
                 html += `
                     <div class="account-card">
-                        <div class="account-header">
+                        <div class="account-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <div>
                                 <div class="account-name">${account.username || '未設定'}</div>
                                 <div class="account-email">${account.email || '未設定'}</div>
                             </div>
+                            <button onclick="deleteAccount('${account.email}', '${account.id || ''}')" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>
                         </div>
                         
                         <div class="account-stats">
