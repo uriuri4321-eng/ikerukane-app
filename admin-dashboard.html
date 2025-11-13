@@ -577,51 +577,29 @@
                 const accountEmail = String(account.email || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
                 const accountId = String(account.id || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
                 
-                html += `
-                    <div class="account-card">
-                        <div class="account-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div class="account-name">${account.username || '未設定'}</div>
-                                <div class="account-email">${account.email || '未設定'}</div>
-                            </div>
-                            <button class="delete-account-btn" data-email="${accountEmail}" data-account-id="${accountId}" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>
-                        </div>
-                        
-                        <div class="account-stats">
-                            <div class="account-stat-item">
-                                <div class="label">現在の予定</div>
-                                <div class="value">${accountStats.totalEvents}</div>
-                            </div>
-                            <div class="account-stat-item">
-                                <div class="label">終了した予定</div>
-                                <div class="value">${accountStats.completedEvents}</div>
-                            </div>
-                            <div class="account-stat-item">
-                                <div class="label">成功した予定</div>
-                                <div class="value" style="color: #28a745;">${accountStats.successfulEvents}</div>
-                            </div>
-                            <div class="account-stat-item">
-                                <div class="label">失敗した予定</div>
-                                <div class="value" style="color: #dc3545;">${accountStats.failedEvents}</div>
-                            </div>
-                            <div class="account-stat-item">
-                                <div class="label">課金阻止額</div>
-                                <div class="value" style="color: #28a745;">¥${accountStats.preventedAmount.toLocaleString()}</div>
-                            </div>
-                            <div class="account-stat-item">
-                                <div class="label">失敗課金額</div>
-                                <div class="value" style="color: #dc3545;">¥${accountStats.failedAmount.toLocaleString()}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="account-info">
-                            <strong>登録日時:</strong> ${registeredDate}<br>
-                            <strong>最終ログイン:</strong> ${lastLoginDate}<br>
-                            ${account.password ? '<strong>パスワード:</strong> ' + account.password + '<br>' : '<strong>パスワード:</strong> （Firebase認証のため非表示）<br>'}
-                            <strong>ユーザーID:</strong> ${account.id || '不明'}
-                        </div>
-                    </div>
-                `;
+                html += '<div class="account-card">';
+                html += '<div class="account-header" style="display: flex; justify-content: space-between; align-items: center;">';
+                html += '<div>';
+                html += '<div class="account-name">' + (account.username || '未設定') + '</div>';
+                html += '<div class="account-email">' + (account.email || '未設定') + '</div>';
+                html += '</div>';
+                html += '<button class="delete-account-btn" data-email="' + accountEmail + '" data-account-id="' + accountId + '" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>';
+                html += '</div>';
+                html += '<div class="account-stats">';
+                html += '<div class="account-stat-item"><div class="label">現在の予定</div><div class="value">' + accountStats.totalEvents + '</div></div>';
+                html += '<div class="account-stat-item"><div class="label">終了した予定</div><div class="value">' + accountStats.completedEvents + '</div></div>';
+                html += '<div class="account-stat-item"><div class="label">成功した予定</div><div class="value" style="color: #28a745;">' + accountStats.successfulEvents + '</div></div>';
+                html += '<div class="account-stat-item"><div class="label">失敗した予定</div><div class="value" style="color: #dc3545;">' + accountStats.failedEvents + '</div></div>';
+                html += '<div class="account-stat-item"><div class="label">課金阻止額</div><div class="value" style="color: #28a745;">¥' + accountStats.preventedAmount.toLocaleString() + '</div></div>';
+                html += '<div class="account-stat-item"><div class="label">失敗課金額</div><div class="value" style="color: #dc3545;">¥' + accountStats.failedAmount.toLocaleString() + '</div></div>';
+                html += '</div>';
+                html += '<div class="account-info">';
+                html += '<strong>登録日時:</strong> ' + registeredDate + '<br>';
+                html += '<strong>最終ログイン:</strong> ' + lastLoginDate + '<br>';
+                html += (account.password ? '<strong>パスワード:</strong> ' + account.password + '<br>' : '<strong>パスワード:</strong> （Firebase認証のため非表示）<br>');
+                html += '<strong>ユーザーID:</strong> ' + (account.id || '不明');
+                html += '</div>';
+                html += '</div>';
             });
             
             accountsList.innerHTML = html;
