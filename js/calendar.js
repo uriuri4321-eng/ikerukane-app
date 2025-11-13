@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 現在のユーザーIDを取得
     const currentUserId = localStorage.getItem('currentUserId');
+    console.log('calendar.js - 現在のユーザーID:', currentUserId);
+    
     if (!currentUserId) {
         alert('ログインが必要です');
         window.location.href = 'index.html';
@@ -18,10 +20,27 @@ document.addEventListener('DOMContentLoaded', function() {
     // ユーザーごとの予定データのキー
     const eventsKey = `events_${currentUserId}`;
     const completedEventsKey = `completedEvents_${currentUserId}`;
+    
+    console.log('calendar.js - 使用するキー:', {
+        eventsKey: eventsKey,
+        completedEventsKey: completedEventsKey
+    });
 
     // 予定データの読み込み（ユーザーごと）
     let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
     let completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+    
+    console.log('calendar.js - 読み込んだ予定データ:', {
+        savedEventsCount: savedEvents.length,
+        completedEventsCount: completedEvents.length,
+        savedEvents: savedEvents,
+        completedEvents: completedEvents
+    });
+    
+    // 全てのlocalStorageキーを確認（デバッグ用）
+    const allKeys = Object.keys(localStorage);
+    const eventKeys = allKeys.filter(key => key.startsWith('events_') || key.startsWith('completedEvents_'));
+    console.log('calendar.js - localStorage内の予定関連キー:', eventKeys);
     
     // 既存の共有されている予定履歴をリセット（全ユーザーで共有されていた履歴を削除）
     if (localStorage.getItem('eventLocationHistory')) {

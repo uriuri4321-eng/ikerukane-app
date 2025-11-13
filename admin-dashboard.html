@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="format-detection" content="telephone=no">
     <title>イケルカネ - 管理者ダッシュボード</title>
@@ -208,6 +209,14 @@
             const currentUserId = localStorage.getItem('currentUserId');
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             
+            console.log('管理者ダッシュボード - 認証チェック:', {
+                isLoggedIn: isLoggedIn,
+                currentUserId: currentUserId,
+                userAccountEmail: userAccount.email,
+                db: db ? '利用可能' : '利用不可',
+                auth: auth ? '利用可能' : '利用不可'
+            });
+            
             // ログインしていない、または管理者メールアドレスでない場合はリダイレクト
             if (isLoggedIn !== 'true' || !currentUserId || userAccount.email !== 'uriuri4321@gmail.com') {
                 alert('管理者としてログインしてください。\n管理者メールアドレス（uriuri4321@gmail.com）でログインしてください。');
@@ -215,10 +224,24 @@
                 return;
             }
             
-            loadAccounts();
+            // Firebase初期化を待つ
+            if (typeof firebase === 'undefined' || !db) {
+                console.warn('Firebaseが初期化されていません。3秒後に再試行します...');
+                setTimeout(() => {
+                    if (db) {
+                        loadAccounts();
+                    } else {
+                        console.error('Firebaseが初期化できませんでした。');
+                        alert('Firebaseの初期化に失敗しました。ページを再読み込みしてください。');
+                    }
+                }, 3000);
+            } else {
+                loadAccounts();
+            }
         });
         
-        function logout() {
+        // グローバルスコープに公開
+        window.logout = function() {
             if (confirm('ログアウトしますか？')) {
                 // ログイン情報をクリア
                 localStorage.removeItem('currentUserId');
@@ -230,53 +253,71 @@
                 }
                 window.location.href = 'index.html';
             }
-        }
+        };
         
-        async function loadAccounts() {
+        // グローバルスコープに公開
+        window.loadAccounts = async function() {
+            console.log('loadAccounts開始 - db:', db ? '利用可能' : '利用不可');
+            
             // Firebaseから全アカウント情報を取得
             if (db) {
-                // Firestoreから全ユーザーを取得
-                db.collection('users').get()
-                    .then(async (querySnapshot) => {
-                        let accounts = [];
-                        querySnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            accounts.push({
-                                id: doc.id,
-                                username: data.username || '未設定',
-                                email: data.email || '未設定',
-                                registeredAt: data.registeredAt ? data.registeredAt.toDate().toISOString() : null,
-                                lastLoginAt: data.lastLoginAt ? data.lastLoginAt.toDate().toISOString() : null,
-                                password: null // セキュリティ上、パスワードは保存しない
-                            });
-                        });
-                        
-                        console.log('Firestoreから取得したアカウント数:', accounts.length);
-                        
-                        // localStorageからも取得（フォールバック）
-                        const localAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
-                        localAccounts.forEach(localAcc => {
-                            if (!accounts.find(acc => acc.email === localAcc.email)) {
-                                accounts.push(localAcc);
-                            }
-                        });
-                        
-                        // 統計情報を計算
-                        await calculateStats(accounts);
-                        
-                        // アカウント一覧を表示
-                        await displayAccounts(accounts);
-                    })
-                    .catch(async (error) => {
-                        console.error('Firestore読み込みエラー:', error);
-                        // エラー時はlocalStorageから読み込む
-                        await loadAccountsFromLocalStorage();
+                try {
+                    console.log('Firestoreからusersコレクションを取得中...');
+                    // Firestoreから全ユーザーを取得
+                    const querySnapshot = await db.collection('users').get();
+                    
+                    console.log('Firestoreクエリ結果:', {
+                        size: querySnapshot.size,
+                        empty: querySnapshot.empty
                     });
+                    
+                    let accounts = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        console.log('取得したドキュメント:', doc.id, data);
+                        accounts.push({
+                            id: doc.id,
+                            username: data.username || '未設定',
+                            email: data.email || '未設定',
+                            registeredAt: data.registeredAt ? (data.registeredAt.toDate ? data.registeredAt.toDate().toISOString() : data.registeredAt) : null,
+                            lastLoginAt: data.lastLoginAt ? (data.lastLoginAt.toDate ? data.lastLoginAt.toDate().toISOString() : data.lastLoginAt) : null,
+                            password: null // セキュリティ上、パスワードは保存しない
+                        });
+                    });
+                    
+                    console.log('Firestoreから取得したアカウント数:', accounts.length);
+                    console.log('取得したアカウント:', accounts);
+                    
+                    // localStorageからも取得（フォールバック）
+                    const localAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
+                    console.log('localStorageから取得したアカウント数:', localAccounts.length);
+                    localAccounts.forEach(localAcc => {
+                        if (!accounts.find(acc => acc.email === localAcc.email)) {
+                            accounts.push(localAcc);
+                        }
+                    });
+                    
+                    // 統計情報を計算
+                    await calculateStats(accounts);
+                    
+                    // アカウント一覧を表示
+                    await displayAccounts(accounts);
+                } catch (error) {
+                    console.error('Firestore読み込みエラー:', error);
+                    console.error('エラー詳細:', {
+                        code: error.code,
+                        message: error.message,
+                        stack: error.stack
+                    });
+                    // エラー時はlocalStorageから読み込む
+                    await loadAccountsFromLocalStorage();
+                }
             } else {
+                console.warn('Firebaseが利用できません。localStorageから読み込みます。');
                 // Firebaseが利用できない場合はlocalStorageから読み込む
                 await loadAccountsFromLocalStorage();
             }
-        }
+        };
         
         async function loadAccountsFromLocalStorage() {
             // 全アカウント情報を取得
@@ -532,6 +573,10 @@
                 const registeredDate = account.registeredAt ? new Date(account.registeredAt).toLocaleString('ja-JP') : '不明';
                 const lastLoginDate = account.lastLoginAt ? new Date(account.lastLoginAt).toLocaleString('ja-JP') : '不明';
                 
+                // データ属性用にエスケープ処理（HTMLエンティティを使用）
+                const accountEmail = String(account.email || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+                const accountId = String(account.id || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+                
                 html += `
                     <div class="account-card">
                         <div class="account-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -539,7 +584,7 @@
                                 <div class="account-name">${account.username || '未設定'}</div>
                                 <div class="account-email">${account.email || '未設定'}</div>
                             </div>
-                            <button onclick="deleteAccount('${account.email}', '${account.id || ''}')" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>
+                            <button class="delete-account-btn" data-email="${accountEmail}" data-account-id="${accountId}" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>
                         </div>
                         
                         <div class="account-stats">
@@ -572,7 +617,7 @@
                         <div class="account-info">
                             <strong>登録日時:</strong> ${registeredDate}<br>
                             <strong>最終ログイン:</strong> ${lastLoginDate}<br>
-                            ${account.password ? `<strong>パスワード:</strong> ${account.password}<br>` : '<strong>パスワード:</strong> （Firebase認証のため非表示）<br>'}
+                            ${account.password ? '<strong>パスワード:</strong> ' + account.password + '<br>' : '<strong>パスワード:</strong> （Firebase認証のため非表示）<br>'}
                             <strong>ユーザーID:</strong> ${account.id || '不明'}
                         </div>
                     </div>
@@ -580,6 +625,16 @@
             });
             
             accountsList.innerHTML = html;
+            
+            // 削除ボタンにイベントリスナーを追加
+            const deleteButtons = accountsList.querySelectorAll('.delete-account-btn');
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const email = this.getAttribute('data-email');
+                    const accountId = this.getAttribute('data-account-id');
+                    deleteAccount(email, accountId);
+                });
+            });
         }
     </script>
 </body>
