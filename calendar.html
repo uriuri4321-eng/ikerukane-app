@@ -485,7 +485,29 @@
         const eventsKey = `events_${currentUserId}`;
         const completedEventsKey = `completedEvents_${currentUserId}`;
         
-        // 基本情報を表示
+        // 登録日時のフォーマット処理
+        let registeredDate = '不明';
+        if (userAccount.registeredAt) {
+          try {
+            // FirestoreのTimestampオブジェクトの場合
+            if (userAccount.registeredAt.toDate) {
+              registeredDate = userAccount.registeredAt.toDate().toLocaleString('ja-JP');
+            } 
+            // 文字列の場合
+            else if (typeof userAccount.registeredAt === 'string') {
+              registeredDate = new Date(userAccount.registeredAt).toLocaleString('ja-JP');
+            }
+            // その他の場合
+            else {
+              registeredDate = new Date(userAccount.registeredAt).toLocaleString('ja-JP');
+            }
+          } catch (e) {
+            console.error('登録日時のフォーマットエラー:', e);
+            registeredDate = '不明';
+          }
+        }
+        
+        // 基本情報を表示（ユーザー名、メールアドレス、登録日のみ）
         const basicInfoHtml = `
           <div class="account-info-item">
             <strong>ユーザー名:</strong> ${userAccount.username || '未設定'}
@@ -494,10 +516,7 @@
             <strong>メールアドレス:</strong> ${userAccount.email || '未設定'}
           </div>
           <div class="account-info-item">
-            <strong>登録日時:</strong> ${userAccount.registeredAt ? new Date(userAccount.registeredAt).toLocaleString('ja-JP') : '不明'}
-          </div>
-          <div class="account-info-item">
-            <strong>最終ログイン:</strong> ${userAccount.lastLoginAt ? new Date(userAccount.lastLoginAt).toLocaleString('ja-JP') : '不明'}
+            <strong>登録日:</strong> ${registeredDate}
           </div>
         `;
         document.getElementById('accountBasicInfo').innerHTML = basicInfoHtml;
