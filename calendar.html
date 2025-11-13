@@ -479,41 +479,93 @@
       };
       
       // アカウント情報を読み込んで表示
-      function loadAccountInfo() {
+      async function loadAccountInfo() {
         const currentUserId = localStorage.getItem('currentUserId');
-        const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
         const eventsKey = `events_${currentUserId}`;
         const completedEventsKey = `completedEvents_${currentUserId}`;
         
-        // 登録日時のフォーマット処理
+        // Firestoreから直接データを取得
+        let userAccount = {};
         let registeredDate = '不明';
-        if (userAccount.registeredAt) {
+        
+        if (db && currentUserId) {
           try {
-            // FirestoreのTimestampオブジェクトの場合
-            if (userAccount.registeredAt.toDate) {
-              registeredDate = userAccount.registeredAt.toDate().toLocaleString('ja-JP');
-            } 
-            // 文字列の場合
-            else if (typeof userAccount.registeredAt === 'string') {
-              registeredDate = new Date(userAccount.registeredAt).toLocaleString('ja-JP');
+            const doc = await db.collection('users').doc(currentUserId).get();
+            if (doc.exists) {
+              const userData = doc.data();
+              userAccount = {
+                username: userData.username || '未設定',
+                email: userData.email || '未設定'
+              };
+              
+              // 登録日時のフォーマット処理
+              if (userData.registeredAt) {
+                try {
+                  // FirestoreのTimestampオブジェクトの場合
+                  if (userData.registeredAt.toDate) {
+                    registeredDate = userData.registeredAt.toDate().toLocaleString('ja-JP');
+                  } else {
+                    registeredDate = new Date(userData.registeredAt).toLocaleString('ja-JP');
+                  }
+                } catch (e) {
+                  console.error('登録日時のフォーマットエラー:', e);
+                  registeredDate = '不明';
+                }
+              }
+            } else {
+              // Firestoreにデータがない場合はlocalStorageから取得
+              const localAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+              userAccount = {
+                username: localAccount.username || '未設定',
+                email: localAccount.email || '未設定'
+              };
+              if (localAccount.registeredAt) {
+                try {
+                  registeredDate = new Date(localAccount.registeredAt).toLocaleString('ja-JP');
+                } catch (e) {
+                  registeredDate = '不明';
+                }
+              }
             }
-            // その他の場合
-            else {
-              registeredDate = new Date(userAccount.registeredAt).toLocaleString('ja-JP');
+          } catch (error) {
+            console.error('Firestore読み込みエラー:', error);
+            // エラー時はlocalStorageから取得
+            const localAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+            userAccount = {
+              username: localAccount.username || '未設定',
+              email: localAccount.email || '未設定'
+            };
+            if (localAccount.registeredAt) {
+              try {
+                registeredDate = new Date(localAccount.registeredAt).toLocaleString('ja-JP');
+              } catch (e) {
+                registeredDate = '不明';
+              }
             }
-          } catch (e) {
-            console.error('登録日時のフォーマットエラー:', e);
-            registeredDate = '不明';
+          }
+        } else {
+          // Firebaseが利用できない場合はlocalStorageから取得
+          const localAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+          userAccount = {
+            username: localAccount.username || '未設定',
+            email: localAccount.email || '未設定'
+          };
+          if (localAccount.registeredAt) {
+            try {
+              registeredDate = new Date(localAccount.registeredAt).toLocaleString('ja-JP');
+            } catch (e) {
+              registeredDate = '不明';
+            }
           }
         }
         
         // 基本情報を表示（ユーザー名、メールアドレス、登録日のみ）
         const basicInfoHtml = `
           <div class="account-info-item">
-            <strong>ユーザー名:</strong> ${userAccount.username || '未設定'}
+            <strong>ユーザー名:</strong> ${userAccount.username}
           </div>
           <div class="account-info-item">
-            <strong>メールアドレス:</strong> ${userAccount.email || '未設定'}
+            <strong>メールアドレス:</strong> ${userAccount.email}
           </div>
           <div class="account-info-item">
             <strong>登録日:</strong> ${registeredDate}
