@@ -331,17 +331,128 @@
     .menu-action-btn.logout:hover {
       background: #c82333;
     }
+    
+    /* タブスタイル */
+    .tab-container {
+      margin-bottom: 20px;
+    }
+    
+    .tab-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e9ecef;
+    }
+    
+    .tab-button {
+      flex: 1;
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      font-size: 16px;
+      font-weight: bold;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .tab-button.active {
+      color: #4CAF50;
+      border-bottom-color: #4CAF50;
+    }
+    
+    .tab-button:hover {
+      color: #4CAF50;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    /* 使い方セクション */
+    .help-section {
+      background: rgba(255,255,255,0.95);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    
+    .help-item {
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .help-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .help-item h3 {
+      color: #4CAF50;
+      font-size: 18px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .help-item p {
+      color: #666;
+      line-height: 1.8;
+      margin-bottom: 10px;
+    }
+    
+    .help-item ul {
+      color: #666;
+      line-height: 1.8;
+      padding-left: 20px;
+      margin-top: 10px;
+    }
+    
+    .help-item li {
+      margin-bottom: 8px;
+    }
+    
+    .help-step {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 10px;
+      border-left: 4px solid #4CAF50;
+    }
+    
+    .help-step strong {
+      color: #4CAF50;
+    }
   </style>
 </head>
 <body>
   <div class="calendar-container">
     <div class="header-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">📅 予定管理</h2>
+        <h2 style="margin: 0;">📅 イケルカネ</h2>
         <button id="accountBtn" style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 20px; font-size: 12px; cursor: pointer; position: relative;">アカウント</button>
       </div>
-      <button id="reserveBtn" class="reserve-button">予定設定</button>
+      
+      <!-- タブボタン -->
+      <div class="tab-container">
+        <div class="tab-buttons">
+          <button class="tab-button active" data-tab="calendar">📅 予定管理</button>
+          <button class="tab-button" data-tab="help">❓ 使い方</button>
+        </div>
+      </div>
     </div>
+    
+    <!-- 予定管理タブ -->
+    <div id="calendarTab" class="tab-content active">
+      <button id="reserveBtn" class="reserve-button">予定設定</button>
     
     <!-- 予定入力フォーム -->
     <div id="eventForm" class="event-form">
@@ -377,6 +488,99 @@
       <h3>📚 予定履歴（再利用）</h3>
       <div id="eventHistoryContainer" style="display: grid; gap: 10px; margin-top: 15px;">
         <!-- 履歴がここに表示されます -->
+      </div>
+    </div>
+    </div>
+    
+    <!-- 使い方タブ -->
+    <div id="helpTab" class="tab-content">
+      <div class="help-section">
+        <div class="help-item">
+          <h3>📱 イケルカネとは？</h3>
+          <p>イケルカネは、お金の抑止力で遅刻を防ぐアプリです。予定を設定し、目的地に到着できなかった場合に課金される仕組みで、時間を守る習慣を身につけます。</p>
+        </div>
+        
+        <div class="help-item">
+          <h3>1️⃣ 予定の設定方法</h3>
+          <div class="help-step">
+            <p><strong>ステップ1:</strong> 「予定設定」ボタンをクリックします</p>
+            <p><strong>ステップ2:</strong> 予定タイトル（例：会議、打ち合わせ）を入力します</p>
+            <p><strong>ステップ3:</strong> 期日（日時）を設定します</p>
+            <p><strong>ステップ4:</strong> 「履歴に保存する」にチェックを入れると、次回以降の予定設定で再利用できます</p>
+            <p><strong>ステップ5:</strong> 「設定」ボタンをクリックします</p>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>2️⃣ 目的地の設定方法</h3>
+          <div class="help-step">
+            <p><strong>ステップ1:</strong> 予定を設定すると、マップ画面が表示されます</p>
+            <p><strong>ステップ2:</strong> マップ上で目的地をタップするか、検索ボックスで場所を検索します</p>
+            <p><strong>ステップ3:</strong> 失敗時の課金額を設定します（例：1000円）</p>
+            <p><strong>ステップ4:</strong> 「決定」ボタンをクリックします</p>
+            <p><strong>注意:</strong> 目的地は予定ごとに設定する必要があります</p>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>3️⃣ 予定の確認方法</h3>
+          <div class="help-step">
+            <p><strong>ステップ1:</strong> 予定一覧から確認したい予定を選択します</p>
+            <p><strong>ステップ2:</strong> 「確認」ボタンをクリックします</p>
+            <p><strong>ステップ3:</strong> チェック画面で以下を確認できます：</p>
+            <ul>
+              <li>⏰ 残り時間（カウントダウン）</li>
+              <li>📍 現在地と目的地の位置</li>
+              <li>💰 失敗時の課金額</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>4️⃣ 成功・失敗の判定</h3>
+          <div class="help-step">
+            <p><strong>✅ 成功（クリア）:</strong></p>
+            <ul>
+              <li>期日までに目的地の100m以内に到着すると成功です</li>
+              <li>課金は発生せず、課金阻止額として記録されます</li>
+            </ul>
+            <p style="margin-top: 15px;"><strong>❌ 失敗:</strong></p>
+            <ul>
+              <li>期日までに目的地に到着できなかった場合、設定した課金額が発生します</li>
+              <li>失敗した予定は「終了した予定一覧」に記録されます</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>5️⃣ 位置情報について</h3>
+          <div class="help-step">
+            <p>アプリは位置情報を使用して、あなたの現在地を確認します。</p>
+            <ul>
+              <li>位置情報の使用を許可してください</li>
+              <li>GPSが利用できない場所では、位置情報の取得に時間がかかる場合があります</li>
+              <li>位置情報が取得できない場合でも、カウントダウンは継続されます</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>6️⃣ その他の機能</h3>
+          <div class="help-step">
+            <p><strong>📚 予定履歴:</strong> 過去に設定した予定を再利用できます</p>
+            <p><strong>👤 アカウント情報:</strong> 右上の「アカウント」ボタンから、統計情報や終了した予定一覧を確認できます</p>
+            <p><strong>✅ 終了した予定一覧:</strong> アカウントメニューから、過去の成功・失敗した予定を確認できます</p>
+          </div>
+        </div>
+        
+        <div class="help-item">
+          <h3>💡 ヒント</h3>
+          <ul>
+            <li>よく使う予定は「履歴に保存する」にチェックを入れておくと便利です</li>
+            <li>課金額は適切に設定することで、より効果的に時間を守る習慣が身につきます</li>
+            <li>位置情報は定期的に更新されるため、移動中でも正確に判定されます</li>
+          </ul>
+        </div>
       </div>
     </div>
     
@@ -613,8 +817,113 @@
       }
       
       // 終了した予定一覧を表示
-      window.viewCompletedEvents = function() {
-        window.location.href = 'completed.html';
+      window.viewCompletedEvents = async function() {
+        const currentUserId = localStorage.getItem('currentUserId');
+        const completedEventsKey = `completedEvents_${currentUserId}`;
+        let completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+        
+        // Firestoreからも取得
+        if (db && currentUserId) {
+          try {
+            const completedEventsSnapshot = await db.collection('events')
+              .where('userId', '==', currentUserId)
+              .where('status', 'in', ['completed', 'failed'])
+              .get();
+            
+            // Firestoreから取得したデータをマージ
+            completedEventsSnapshot.forEach((doc) => {
+              const eventData = doc.data();
+              // 既にlocalStorageにある場合はスキップ（重複を避ける）
+              const exists = completedEvents.find(e => 
+                e.title === eventData.title && 
+                e.start === eventData.start
+              );
+              if (!exists) {
+                completedEvents.push({
+                  id: doc.id,
+                  title: eventData.title,
+                  start: eventData.start,
+                  completedAt: eventData.completedAt ? (eventData.completedAt.toDate ? eventData.completedAt.toDate().toISOString() : eventData.completedAt) : null,
+                  status: eventData.status,
+                  penaltyAmount: eventData.penaltyAmount || 0,
+                  preventedAmount: eventData.preventedAmount || 0
+                });
+              }
+            });
+          } catch (error) {
+            console.error('Firestoreからの終了予定取得エラー:', error);
+          }
+        }
+        
+        // モーダルを作成
+        const modal = document.createElement('div');
+        modal.id = 'completedEventsModal';
+        modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;';
+        
+        const modalContent = document.createElement('div');
+        modalContent.style.cssText = 'background: white; border-radius: 15px; padding: 30px; max-width: 90%; max-height: 80vh; overflow-y: auto; position: relative; width: 400px;';
+        
+        let html = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">';
+        html += '<h2 style="margin: 0; color: #333;">✅ 終了した予定一覧</h2>';
+        html += '<button onclick="closeCompletedEventsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666; padding: 0; width: 30px; height: 30px;">×</button>';
+        html += '</div>';
+        
+        if (completedEvents.length === 0) {
+          html += '<div style="text-align: center; padding: 40px; color: #666;">終了した予定がありません</div>';
+        } else {
+          // 日付順にソート（新しい順）
+          const sortedEvents = completedEvents.sort((a, b) => {
+            const dateA = new Date(a.completedAt || a.start);
+            const dateB = new Date(b.completedAt || b.start);
+            return dateB - dateA;
+          });
+          
+          sortedEvents.forEach(event => {
+            const eventDate = new Date(event.start);
+            const dateStr = eventDate.toLocaleString('ja-JP', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            
+            const completedDate = event.completedAt ? new Date(event.completedAt).toLocaleString('ja-JP') : '不明';
+            const statusText = event.status === 'completed' ? '✅ 成功' : '❌ 失敗';
+            const statusColor = event.status === 'completed' ? '#28a745' : '#dc3545';
+            
+            html += '<div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; margin-bottom: 10px;">';
+            html += '<div style="font-weight: bold; color: #333; margin-bottom: 5px;">' + (event.title || '未設定') + '</div>';
+            html += '<div style="color: #666; font-size: 14px; margin-bottom: 5px;">期日: ' + dateStr + '</div>';
+            html += '<div style="color: #666; font-size: 14px; margin-bottom: 5px;">終了日時: ' + completedDate + '</div>';
+            html += '<div style="color: ' + statusColor + '; font-weight: bold; margin-bottom: 5px;">' + statusText + '</div>';
+            if (event.status === 'completed' && event.preventedAmount) {
+              html += '<div style="color: #28a745; font-size: 14px;">課金阻止額: ¥' + event.preventedAmount.toLocaleString() + '</div>';
+            } else if (event.status === 'failed' && event.penaltyAmount) {
+              html += '<div style="color: #dc3545; font-size: 14px;">課金額: ¥' + event.penaltyAmount.toLocaleString() + '</div>';
+            }
+            html += '</div>';
+          });
+        }
+        
+        modalContent.innerHTML = html;
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+        
+        // モーダル外をクリックで閉じる
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) {
+            closeCompletedEventsModal();
+          }
+        });
+      };
+      
+      // 終了した予定一覧モーダルを閉じる
+      window.closeCompletedEventsModal = function() {
+        const modal = document.getElementById('completedEventsModal');
+        if (modal) {
+          modal.remove();
+        }
       };
       
       // ログアウト
@@ -644,6 +953,24 @@
         if (e.target.id === 'accountMenu') {
           closeAccountMenu();
         }
+      });
+      
+      // タブ切り替え機能
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+      
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+          const targetTab = this.getAttribute('data-tab');
+          
+          // すべてのタブボタンとコンテンツからactiveクラスを削除
+          tabButtons.forEach(btn => btn.classList.remove('active'));
+          tabContents.forEach(content => content.classList.remove('active'));
+          
+          // クリックされたタブをアクティブにする
+          this.classList.add('active');
+          document.getElementById(targetTab + 'Tab').classList.add('active');
+        });
       });
     });
   </script>

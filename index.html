@@ -322,6 +322,7 @@
             
             // Googleログインボタンのクリックイベント
             document.getElementById('googleLoginBtn').addEventListener('click', function() {
+                // まずポップアップで試行
                 auth.signInWithPopup(provider)
                     .then((result) => {
                         const user = result.user;
@@ -366,10 +367,98 @@
                         });
                     })
                     .catch((error) => {
-                        console.error('Googleログインエラー:', error);
-                        alert('Googleアカウントでのログインに失敗しました。');
+                        console.error('Googleログインエラー（ポップアップ）:', error);
+                        console.error('エラーコード:', error.code);
+                        console.error('エラーメッセージ:', error.message);
+                        
+                        // ポップアップがブロックされた場合やauth/popup-blockedエラーの場合、リダイレクト方式にフォールバック
+                        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+                            console.log('ポップアップがブロックされたため、リダイレクト方式に切り替えます');
+                            auth.signInWithRedirect(provider)
+                                .then(() => {
+                                    // リダイレクトが成功した場合、ページがリロードされる
+                                })
+                                .catch((redirectError) => {
+                                    console.error('Googleログインエラー（リダイレクト）:', redirectError);
+                                    let errorMessage = 'Googleアカウントでのログインに失敗しました。\n';
+                                    if (redirectError.code === 'auth/unauthorized-domain') {
+                                        errorMessage += 'このドメインは認証されていません。Firebase Consoleで承認済みドメインを確認してください。';
+                                    } else if (redirectError.code === 'auth/operation-not-allowed') {
+                                        errorMessage += 'Google認証が有効になっていません。Firebase ConsoleでGoogle認証を有効にしてください。';
+                                    } else {
+                                        errorMessage += 'エラー: ' + redirectError.message;
+                                    }
+                                    alert(errorMessage);
+                                });
+                        } else {
+                            // その他のエラー
+                            let errorMessage = 'Googleアカウントでのログインに失敗しました。\n';
+                            if (error.code === 'auth/unauthorized-domain') {
+                                errorMessage += 'このドメインは認証されていません。Firebase Consoleで承認済みドメインを確認してください。';
+                            } else if (error.code === 'auth/operation-not-allowed') {
+                                errorMessage += 'Google認証が有効になっていません。Firebase ConsoleでGoogle認証を有効にしてください。';
+                            } else if (error.code === 'auth/popup-closed-by-user') {
+                                errorMessage += 'ログインウィンドウが閉じられました。再度お試しください。';
+                            } else {
+                                errorMessage += 'エラー: ' + error.message + '\nエラーコード: ' + error.code;
+                            }
+                            alert(errorMessage);
+                        }
                     });
             });
+            
+            // リダイレクト後の認証結果を処理
+            auth.getRedirectResult()
+                .then((result) => {
+                    if (result.user) {
+                        const user = result.user;
+                        console.log('Googleログイン成功（リダイレクト）:', user.uid);
+                        
+                        // Firestoreにユーザー情報を保存（初回ログイン時）
+                        const userRef = db.collection('users').doc(user.uid);
+                        return userRef.get().then((doc) => {
+                            if (!doc.exists) {
+                                // 新規ユーザーの場合
+                                const userData = {
+                                    id: user.uid,
+                                    username: user.displayName || 'Googleユーザー',
+                                    email: user.email,
+                                    registeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    provider: 'google'
+                                };
+                                return userRef.set(userData).then(() => userData);
+                            } else {
+                                // 既存ユーザーの場合、最終ログイン日時を更新
+                                const userData = doc.data();
+                                return userRef.update({
+                                    lastLoginAt: firebase.firestore.FieldValue.serverTimestamp()
+                                }).then(() => userData);
+                            }
+                        })
+                        .then((userData) => {
+                            // localStorageにも保存
+                            localStorage.setItem('currentUserId', user.uid);
+                            localStorage.setItem('isLoggedIn', 'true');
+                            localStorage.setItem('userAccount', JSON.stringify(userData));
+                            
+                            alert('ログインしました！');
+                            
+                            // 管理者メールアドレスの場合は管理ページに遷移
+                            if (userData && userData.email === 'uriuri4321@gmail.com') {
+                                window.location.href = 'admin-dashboard.html';
+                            } else {
+                                window.location.href = 'calendar.html';
+                            }
+                        });
+                    }
+                })
+                .catch((error) => {
+                    // リダイレクト結果がない場合はエラーを無視（通常の状態）
+                    if (error.code !== 'auth/credential-already-in-use' && error.code !== 'auth/email-already-in-use') {
+                        console.error('リダイレクト結果の処理エラー:', error);
+                    }
+                });
         }
     </script>
 </body>

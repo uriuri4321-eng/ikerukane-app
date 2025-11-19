@@ -78,6 +78,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 成功/失敗の判定（デフォルトは失敗として扱う）
                 event.status = event.status === 'completed' ? 'completed' : 'failed';
                 expiredEvents.push(event);
+                
+                // Firestoreにも更新を反映
+                if (db && currentUserId && event.id) {
+                    db.collection('events')
+                        .where('userId', '==', currentUserId)
+                        .where('title', '==', event.title)
+                        .where('start', '==', event.start)
+                        .where('status', '==', 'active')
+                        .get()
+                        .then((querySnapshot) => {
+                            if (!querySnapshot.empty) {
+                                const doc = querySnapshot.docs[0];
+                                doc.ref.update({
+                                    status: event.status,
+                                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                }).catch((error) => {
+                                    console.error('Firestoreの予定更新エラー:', error);
+                                });
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Firestoreからの予定検索エラー:', error);
+                        });
+                }
             } else {
                 // まだ期日が来ていない予定は現在のリストに残す
                 activeEvents.push(event);
@@ -145,6 +169,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         savedEvents.push(newEvent);
         localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        
+        // Firestoreにも保存
+        if (db && currentUserId) {
+            const eventData = {
+                userId: currentUserId,
+                ...newEvent,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            db.collection('events').add(eventData)
+                .then((docRef) => {
+                    console.log('Firestoreに予定を保存しました:', docRef.id);
+                })
+                .catch((error) => {
+                    console.error('Firestoreへの予定保存エラー:', error);
+                });
+        }
 
         // 最新の予定情報を保存（map.htmlで使用）
         localStorage.setItem('eventTitle', title);
@@ -238,8 +278,34 @@ document.addEventListener('DOMContentLoaded', function() {
     // 予定削除
     window.deleteEvent = function(eventId) {
         if (confirm('この予定を削除しますか？')) {
+            const eventToDelete = savedEvents.find(e => e.id == eventId);
             savedEvents = savedEvents.filter(e => e.id != eventId);
             localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+            
+            // Firestoreからも削除
+            if (db && currentUserId && eventToDelete) {
+                db.collection('events')
+                    .where('userId', '==', currentUserId)
+                    .where('title', '==', eventToDelete.title)
+                    .where('start', '==', eventToDelete.start)
+                    .where('status', '==', 'active')
+                    .get()
+                    .then((querySnapshot) => {
+                        querySnapshot.forEach((doc) => {
+                            doc.ref.delete()
+                                .then(() => {
+                                    console.log('Firestoreから予定を削除しました:', doc.id);
+                                })
+                                .catch((error) => {
+                                    console.error('Firestoreからの予定削除エラー:', error);
+                                });
+                        });
+                    })
+                    .catch((error) => {
+                        console.error('Firestoreからの予定検索エラー:', error);
+                    });
+            }
+            
             displayEvents(); // 一覧を更新
         }
     };

@@ -21,6 +21,10 @@ MoneyElm.textContent = money + "円";
 
 let targetDate = null;
 let TimeInterval = null;
+let distanceCheckInterval = null; // 距離チェックのインターバルID
+let watchPositionId = null; // watchPositionのID
+let positionRetryCount = 0; // 位置情報取得のリトライ回数
+const MAX_POSITION_RETRIES = 5; // 最大リトライ回数
 
 // 日付情報の検証と設定
 if(!targetDateStr) {
@@ -104,24 +108,29 @@ function initializeMap() {
     }
 }
 
-// 現在位置取得（改善版）
+// 現在位置取得（改善版：リトライ機能付き）
 function getCurrentPositionForCheck() {
     if (!navigator.geolocation) {
         console.warn("check.js: このブラウザはGeolocation APIに対応していません");
         showLocationError("このブラウザは位置情報に対応していません。");
+        // 位置情報がなくてもカウントダウンは開始
+        startCountdown();
         return;
     }
 
     const options = {
         enableHighAccuracy: true,
-        timeout: 20000, // 20秒に延長
-        maximumAge: 30000 // 30秒間キャッシュを使用
+        timeout: 30000, // 30秒に延長
+        maximumAge: 10000 // 10秒間キャッシュを使用（より新しい位置情報を取得）
     };
 
-    console.log("check.js: 位置情報取得を開始します...");
+    console.log("check.js: 位置情報取得を開始します... (リトライ回数: " + positionRetryCount + ")");
 
     navigator.geolocation.getCurrentPosition(
         function(position) {
+            // リトライカウントをリセット
+            positionRetryCount = 0;
+            
             const currentLat = position.coords.latitude;
             const currentLng = position.coords.longitude;
             const accuracy = position.coords.accuracy;
@@ -150,14 +159,18 @@ function getCurrentPositionForCheck() {
                     rotation: 0
                 };
                 
-                currentMarker = new google.maps.Marker({
-                    map: map,
-                    position: {lat: currentLat, lng: currentLng},
-                    title: '現在位置',
-                    icon: personIconSVG,
-                    zIndex: 1000, // 他のマーカーより上に表示
-                    animation: google.maps.Animation.DROP // アニメーション効果
-                });
+                if (!currentMarker) {
+                    currentMarker = new google.maps.Marker({
+                        map: map,
+                        position: {lat: currentLat, lng: currentLng},
+                        title: '現在位置',
+                        icon: personIconSVG,
+                        zIndex: 1000, // 他のマーカーより上に表示
+                        animation: google.maps.Animation.DROP // アニメーション効果
+                    });
+                } else {
+                    currentMarker.setPosition({lat: currentLat, lng: currentLng});
+                }
                 
                 // 現在位置の周りに円を表示（より目立つように）
                 if (!window.currentLocationCircle) {
@@ -172,6 +185,8 @@ function getCurrentPositionForCheck() {
                         strokeWeight: 2,
                         zIndex: 999
                     });
+                } else {
+                    window.currentLocationCircle.setCenter({lat: currentLat, lng: currentLng});
                 }
 
                 // 地図の中心を現在位置と目的地の中間にする
@@ -181,24 +196,121 @@ function getCurrentPositionForCheck() {
                 map.fitBounds(bounds);
             }
 
-            // カウントダウン開始
-            startCountdown();
+            // カウントダウン開始（まだ開始していない場合）
+            if (!TimeInterval) {
+                startCountdown();
+            }
             
-            // 距離チェック開始
-            startDistanceCheck();
+            // 距離チェック開始（まだ開始していない場合）
+            if (!distanceCheckInterval) {
+                startDistanceCheck();
+            }
+            
+            // watchPositionを開始して継続的に位置情報を監視
+            startWatchingPosition();
 
             console.log("check.js: すべての初期化が完了しました");
 
         },
         function(error) {
             console.error("check.js: 位置情報の取得に失敗しました:", error);
-            handleLocationErrorForCheck(error);
             
-            // 位置情報がなくてもカウントダウンは開始
-            startCountdown();
+            // リトライ回数が上限に達していない場合はリトライ
+            if (positionRetryCount < MAX_POSITION_RETRIES) {
+                positionRetryCount++;
+                console.log("check.js: 位置情報取得をリトライします (" + positionRetryCount + "/" + MAX_POSITION_RETRIES + ")");
+                
+                // リトライ前に少し待機（指数バックオフ）
+                const retryDelay = Math.min(1000 * Math.pow(2, positionRetryCount - 1), 10000);
+                setTimeout(() => {
+                    getCurrentPositionForCheck();
+                }, retryDelay);
+            } else {
+                // リトライ回数が上限に達した場合
+                console.error("check.js: 位置情報の取得に失敗しました（最大リトライ回数に達しました）");
+                handleLocationErrorForCheck(error);
+                
+                // 位置情報がなくてもカウントダウンは開始
+                if (!TimeInterval) {
+                    startCountdown();
+                }
+            }
         },
         options
     );
+}
+
+// watchPositionを使用して継続的に位置情報を監視
+function startWatchingPosition() {
+    if (!navigator.geolocation) {
+        return;
+    }
+    
+    // 既に監視中の場合は停止
+    if (watchPositionId !== null) {
+        navigator.geolocation.clearWatch(watchPositionId);
+    }
+    
+    const options = {
+        enableHighAccuracy: true,
+        timeout: 30000,
+        maximumAge: 5000 // 5秒間キャッシュを使用
+    };
+    
+            watchPositionId = navigator.geolocation.watchPosition(
+        function(position) {
+            // クリア済みまたは時間切れ済みの場合は処理を停止
+            if (window.cleared || window.charged) {
+                if (watchPositionId !== null) {
+                    navigator.geolocation.clearWatch(watchPositionId);
+                    watchPositionId = null;
+                }
+                return;
+            }
+            
+            const currentLat = position.coords.latitude;
+            const currentLng = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            console.log("check.js: 位置情報を更新しました", {
+                lat: currentLat,
+                lng: currentLng,
+                accuracy: accuracy + "m"
+            });
+            
+            // 現在位置を表示
+            updateCurrentLocation(currentLat, currentLng);
+            
+            // 現在位置マーカーを更新
+            if (currentMarker) {
+                currentMarker.setPosition({lat: currentLat, lng: currentLng});
+            }
+            
+            // 現在位置の円も更新
+            if (window.currentLocationCircle) {
+                window.currentLocationCircle.setCenter({lat: currentLat, lng: currentLng});
+            }
+            
+            // 距離を計算してチェック
+            calculateAndCheckDistance(currentLat, currentLng);
+        },
+        function(error) {
+            // エラーが発生しても監視を継続（一時的なエラーの可能性があるため）
+            console.warn("check.js: 位置情報の監視中にエラーが発生しました:", error.message);
+            
+            // パーミッションエラーの場合は監視を停止
+            if (error.code === error.PERMISSION_DENIED) {
+                console.error("check.js: 位置情報の使用が許可されていません。監視を停止します。");
+                if (watchPositionId !== null) {
+                    navigator.geolocation.clearWatch(watchPositionId);
+                    watchPositionId = null;
+                }
+            }
+        },
+        options
+    );
+    
+    console.log("check.js: 位置情報の監視を開始しました");
 }
 
 // カウントダウン開始
@@ -214,7 +326,7 @@ function startCountdown() {
 
 // 距離チェック開始
 function startDistanceCheck() {
-    setInterval(checkDistance, 5000);
+    distanceCheckInterval = setInterval(checkDistance, 5000);
     console.log("check.js: 距離チェックを開始しました");
 }
 
@@ -254,7 +366,23 @@ function updateTime() {
     let diff = targetDate.getTime() - now.getTime();
 
     if(diff <= 0) {
-        clearInterval(TimeInterval);
+        // クリア済みの場合は処理を停止
+        if(window.cleared) {
+            return;
+        }
+        
+        // カウントダウンを停止
+        if(TimeInterval) {
+            clearInterval(TimeInterval);
+            TimeInterval = null;
+        }
+        
+        // 距離チェックを停止
+        if(distanceCheckInterval) {
+            clearInterval(distanceCheckInterval);
+            distanceCheckInterval = null;
+        }
+        
         TimeElm.textContent = "時間切れ！！";
         TimeElm.style.color = "#FF0000";
         TimeElm.style.fontWeight = "bold";
@@ -309,58 +437,97 @@ function updateCurrentLocation(lat, lng) {
 }
 
 function checkDistance() {
+    // クリア済みの場合は処理を停止
+    if(window.cleared) {
+        return;
+    }
+    
+    // 時間切れ済みの場合も処理を停止
+    if(window.charged) {
+        return;
+    }
+    
     if(!map || !targetMarker) return;
-
-    navigator.geolocation.getCurrentPosition(
-        function(position) {
-            const nowLat = position.coords.latitude;
-            const nowLng = position.coords.longitude;
-
-            // Haversine 法で距離を計算（km単位）
-            const distance = 6371 * Math.acos(
-                Math.cos(targetLat*R) * Math.cos(nowLat*R) * Math.cos(nowLng*R - targetLng*R) +
-                Math.sin(targetLat*R) * Math.sin(nowLat*R)
-            );
-
-            // 現在位置マーカーを更新
-            if(currentMarker) {
-                currentMarker.setPosition({lat: nowLat, lng: nowLng});
-            }
-            
-            // 現在位置の円も更新
-            if(window.currentLocationCircle) {
-                window.currentLocationCircle.setCenter({lat: nowLat, lng: nowLng});
-            }
-            
-            // 現在地表示を更新
-            updateCurrentLocation(nowLat, nowLng);
-
-            // 100m以内に到達した場合
-            if(distance < 0.1) { // 0.1km = 100m
-                clearInterval(TimeInterval);
-                TimeElm.textContent = "クリア！！";
-                TimeElm.style.color = "#00AA00";
-                TimeElm.style.fontWeight = "bold";
-                
-                // クリアアラート（一度だけ表示）
-                if(!window.cleared) {
-                    window.cleared = true;
-                    alert(`🎉 クリア！！\n目的地に到着しました！\n課金は免れました`);
-                    // 予定の成功を記録（設定されていた課金額を阻止額として保存）
-                    recordEventResult('completed', 0, money);
+    
+    // watchPositionが動作している場合は、その位置情報を使用
+    // そうでない場合のみgetCurrentPositionを使用
+    if (watchPositionId === null) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                // クリア済みまたは時間切れ済みの場合は処理を停止
+                if(window.cleared || window.charged) {
+                    return;
                 }
+                
+                const nowLat = position.coords.latitude;
+                const nowLng = position.coords.longitude;
+
+                calculateAndCheckDistance(nowLat, nowLng);
+            },
+            function(error) {
+                // クリア済みまたは時間切れ済みの場合は処理を停止
+                if(window.cleared || window.charged) {
+                    return;
+                }
+                console.warn("距離チェック用の位置情報取得に失敗:", error.message);
+                // 距離チェックの失敗は致命的ではないので、エラーは表示しない
+            },
+            {
+                enableHighAccuracy: false,
+                timeout: 10000, // タイムアウトを延長
+                maximumAge: 10000 // 10秒間キャッシュを使用
             }
-        },
-        function(error) {
-            console.warn("距離チェック用の位置情報取得に失敗:", error.message);
-            // 距離チェックの失敗は致命的ではないので、エラーは表示しない
-        },
-        {
-            enableHighAccuracy: false,
-            timeout: 5000,
-            maximumAge: 30000
-        }
+        );
+    }
+    // watchPositionが動作している場合は、位置情報は自動的に更新されるため
+    // ここでは距離計算のみ行う（位置情報はwatchPositionのコールバックで更新される）
+}
+
+// 距離を計算してチェックする関数
+function calculateAndCheckDistance(nowLat, nowLng) {
+    // クリア済みまたは時間切れ済みの場合は処理を停止
+    if(window.cleared || window.charged) {
+        return;
+    }
+    
+    // Haversine 法で距離を計算（km単位）
+    const distance = 6371 * Math.acos(
+        Math.cos(targetLat*R) * Math.cos(nowLat*R) * Math.cos(nowLng*R - targetLng*R) +
+        Math.sin(targetLat*R) * Math.sin(nowLat*R)
     );
+
+    // 100m以内に到達した場合
+    if(distance < 0.1) { // 0.1km = 100m
+        // カウントダウンを停止
+        if(TimeInterval) {
+            clearInterval(TimeInterval);
+            TimeInterval = null;
+        }
+        
+        // 距離チェックを停止
+        if(distanceCheckInterval) {
+            clearInterval(distanceCheckInterval);
+            distanceCheckInterval = null;
+        }
+        
+        // watchPositionも停止
+        if(watchPositionId !== null) {
+            navigator.geolocation.clearWatch(watchPositionId);
+            watchPositionId = null;
+        }
+        
+        TimeElm.textContent = "クリア！！";
+        TimeElm.style.color = "#00AA00";
+        TimeElm.style.fontWeight = "bold";
+        
+        // クリアアラート（一度だけ表示）
+        if(!window.cleared) {
+            window.cleared = true;
+            alert(`🎉 クリア！！\n目的地に到着しました！\n課金は免れました`);
+            // 予定の成功を記録（設定されていた課金額を阻止額として保存）
+            recordEventResult('completed', 0, money);
+        }
+    }
 }
 
 // 予定の結果を記録する関数
@@ -410,6 +577,65 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
             // localStorageに保存（ユーザーごと）
             localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
             localStorage.setItem(completedEventsKey, JSON.stringify(completedEvents));
+            
+            // Firestoreに予定の状態を更新
+            if (db && currentUserId) {
+                // Firestoreから該当する予定を検索して更新
+                db.collection('events')
+                    .where('userId', '==', currentUserId)
+                    .where('title', '==', eventTitle)
+                    .where('start', '==', eventDeadline)
+                    .where('status', '==', 'active')
+                    .get()
+                    .then((querySnapshot) => {
+                        if (!querySnapshot.empty) {
+                            // 最初の一致する予定を更新
+                            const doc = querySnapshot.docs[0];
+                            const updateData = {
+                                status: status,
+                                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                penaltyAmount: penaltyAmount
+                            };
+                            if (status === 'completed' && preventedAmount) {
+                                updateData.preventedAmount = preventedAmount;
+                            }
+                            
+                            doc.ref.update(updateData)
+                                .then(() => {
+                                    console.log('Firestoreの予定を更新しました:', doc.id);
+                                })
+                                .catch((error) => {
+                                    console.error('Firestoreの予定更新エラー:', error);
+                                });
+                        } else {
+                            // 該当する予定がない場合は新規作成
+                            const eventData = {
+                                userId: currentUserId,
+                                title: eventTitle,
+                                start: eventDeadline,
+                                end: eventDeadline,
+                                status: status,
+                                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                penaltyAmount: penaltyAmount,
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            };
+                            if (status === 'completed' && preventedAmount) {
+                                eventData.preventedAmount = preventedAmount;
+                            }
+                            
+                            db.collection('events').add(eventData)
+                                .then((docRef) => {
+                                    console.log('Firestoreに予定を保存しました:', docRef.id);
+                                })
+                                .catch((error) => {
+                                    console.error('Firestoreへの予定保存エラー:', error);
+                                });
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Firestoreからの予定検索エラー:', error);
+                    });
+            }
             
             // Firestoreに課金情報を保存（失敗時のみ）
             if (status === 'failed' && penaltyAmount > 0 && db) {

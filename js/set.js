@@ -274,6 +274,33 @@ window.addEventListener("load", () => {
                 savedEvents[eventIndex].lng = lng;
                 savedEvents[eventIndex].money = setmoney;
                 localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+                
+                // Firestoreにも更新を反映
+                if (db) {
+                    db.collection('events')
+                        .where('userId', '==', currentUserId)
+                        .where('title', '==', eventTitle)
+                        .where('start', '==', eventDeadline)
+                        .where('status', '==', 'active')
+                        .get()
+                        .then((querySnapshot) => {
+                            if (!querySnapshot.empty) {
+                                const doc = querySnapshot.docs[0];
+                                doc.ref.update({
+                                    lat: lat,
+                                    lng: lng,
+                                    money: setmoney
+                                }).then(() => {
+                                    console.log('Firestoreの予定を更新しました:', doc.id);
+                                }).catch((error) => {
+                                    console.error('Firestoreの予定更新エラー:', error);
+                                });
+                            }
+                        })
+                        .catch((error) => {
+                            console.error('Firestoreからの予定検索エラー:', error);
+                        });
+                }
             }
         }
         
