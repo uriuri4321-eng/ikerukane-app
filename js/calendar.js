@@ -552,6 +552,48 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.log('moneyを更新:', firestoreData.money);
                         }
                         
+                        // Firestoreに位置情報や課金額がない場合、localStorageから取得を試行
+                        if ((!event.lat || !event.lng || event.money == null) && !firestoreData.lat && !firestoreData.lng && firestoreData.money == null) {
+                            console.log('Firestoreに位置情報がないため、localStorageから取得を試行');
+                            const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                            const localEvent = localEvents.find(e => 
+                                (e.id == eventId || e.firestoreId === eventId || e.firestoreId === docId) &&
+                                e.title === event.title &&
+                                e.start === event.start
+                            );
+                            
+                            if (localEvent) {
+                                console.log('localStorageから見つかった予定:', localEvent);
+                                if (localEvent.lat != null && !event.lat) {
+                                    event.lat = localEvent.lat;
+                                    console.log('localStorageからlatを取得:', localEvent.lat);
+                                }
+                                if (localEvent.lng != null && !event.lng) {
+                                    event.lng = localEvent.lng;
+                                    console.log('localStorageからlngを取得:', localEvent.lng);
+                                }
+                                if (localEvent.money != null && event.money == null) {
+                                    event.money = localEvent.money;
+                                    console.log('localStorageからmoneyを取得:', localEvent.money);
+                                }
+                                
+                                // localStorageに位置情報がある場合、Firestoreにも保存
+                                if (localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                                    console.log('Firestoreに位置情報を保存します');
+                                    const updateData = {
+                                        lat: localEvent.lat,
+                                        lng: localEvent.lng,
+                                        money: localEvent.money
+                                    };
+                                    if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                                        updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                                    }
+                                    await doc.ref.update(updateData);
+                                    console.log('Firestoreに位置情報を保存しました');
+                                }
+                            }
+                        }
+                        
                         console.log('更新後のイベント情報:', {
                             lat: event.lat,
                             lng: event.lng,
@@ -559,12 +601,65 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     } else {
                         console.warn('Firestoreにドキュメントが存在しません:', docId);
+                        // Firestoreに存在しない場合、localStorageから取得
+                        const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                        const localEvent = localEvents.find(e => 
+                            (e.id == eventId || e.firestoreId === eventId) &&
+                            e.title === event.title &&
+                            e.start === event.start
+                        );
+                        if (localEvent && localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                            event.lat = localEvent.lat;
+                            event.lng = localEvent.lng;
+                            event.money = localEvent.money;
+                            console.log('localStorageから位置情報を取得しました');
+                        }
                     }
                 } catch (error) {
                     console.error('Firestoreからの予定取得エラー:', error);
+                    // エラー時もlocalStorageから取得を試行
+                    const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                    const localEvent = localEvents.find(e => 
+                        (e.id == eventId || e.firestoreId === eventId) &&
+                        e.title === event.title &&
+                        e.start === event.start
+                    );
+                    if (localEvent && localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                        event.lat = localEvent.lat;
+                        event.lng = localEvent.lng;
+                        event.money = localEvent.money;
+                        console.log('エラー時、localStorageから位置情報を取得しました');
+                    }
                 }
             } else {
                 console.warn('docIdが取得できませんでした');
+                // docIdがない場合、localStorageから取得
+                const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                const localEvent = localEvents.find(e => 
+                    e.id == eventId &&
+                    e.title === event.title &&
+                    e.start === event.start
+                );
+                if (localEvent && localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                    event.lat = localEvent.lat;
+                    event.lng = localEvent.lng;
+                    event.money = localEvent.money;
+                    console.log('docIdなし、localStorageから位置情報を取得しました');
+                }
+            }
+        } else if (event) {
+            // Firestoreが利用できない場合、localStorageから取得
+            const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            const localEvent = localEvents.find(e => 
+                (e.id == eventId || e.firestoreId === eventId) &&
+                e.title === event.title &&
+                e.start === event.start
+            );
+            if (localEvent && localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                event.lat = localEvent.lat;
+                event.lng = localEvent.lng;
+                event.money = localEvent.money;
+                console.log('Firestore利用不可、localStorageから位置情報を取得しました');
             }
         }
 
