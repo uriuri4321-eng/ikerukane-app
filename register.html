@@ -143,6 +143,28 @@
     </div>
 
     <script>
+        function isSessionStorageAvailable() {
+            try {
+                const testKey = '__session_test__';
+                sessionStorage.setItem(testKey, '1');
+                sessionStorage.removeItem(testKey);
+                return true;
+            } catch (error) {
+                console.error('sessionStorageが利用できません:', error);
+                return false;
+            }
+        }
+
+        function alertSessionStorageIssue() {
+            alert(
+                'ブラウザのsessionStorageにアクセスできないため、Googleログインを開始できません。\n\n' +
+                '次の対処を試してください：\n' +
+                '1. Safari/Chromeを通常モードで開く（プライベート/シークレットモード不可）\n' +
+                '2. LINEなどのアプリ内ブラウザではなく、Safari/Chrome本体で開く\n' +
+                '3. ブラウザの設定で「サイト越えトラッキングを許可」「Cookieを許可」にする'
+            );
+        }
+
         // Googleアカウント登録のセットアップ
         function setupGoogleSignUp() {
             const googleSignUpButton = document.getElementById('googleSignUpButton');
@@ -181,6 +203,11 @@
             button.addEventListener('click', function(e) {
                 e.preventDefault();
                 console.log('Google登録ボタンがクリックされました');
+
+                if (!isSessionStorageAvailable()) {
+                    alertSessionStorageIssue();
+                    return;
+                }
                 
                 // ローディング状態を表示
                 button.disabled = true;

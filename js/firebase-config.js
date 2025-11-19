@@ -22,6 +22,19 @@ if (typeof firebase !== 'undefined') {
     try {
         app = firebase.initializeApp(firebaseConfig);
         auth = firebase.auth();
+        if (auth && firebase.auth && firebase.auth.Auth && firebase.auth.Auth.Persistence) {
+            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+                .then(() => {
+                    console.log('Firebase Auth persistence set to LOCAL');
+                })
+                .catch((persistenceError) => {
+                    console.error('Failed to set Firebase Auth persistence:', persistenceError);
+                });
+        } else if (auth && auth.setPersistence) {
+            auth.setPersistence('local').catch((persistenceError) => {
+                console.error('Failed to set Firebase Auth persistence (fallback):', persistenceError);
+            });
+        }
         db = firebase.firestore();
         console.log('Firebase初期化成功');
     } catch (error) {

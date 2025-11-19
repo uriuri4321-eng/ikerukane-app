@@ -64,6 +64,28 @@
     <div id="map"></div>
 
     <script>
+        function isSessionStorageAvailable() {
+            try {
+                const testKey = '__session_test__';
+                sessionStorage.setItem(testKey, '1');
+                sessionStorage.removeItem(testKey);
+                return true;
+            } catch (error) {
+                console.error('sessionStorageが利用できません:', error);
+                return false;
+            }
+        }
+
+        function alertSessionStorageIssue() {
+            alert(
+                'ブラウザのsessionStorageにアクセスできないため、Googleログインを開始できません。\n\n' +
+                '次の対処を試してください：\n' +
+                '1. Safari/Chromeを通常モードで開く（プライベート/シークレットモード不可）\n' +
+                '2. LINEなどのアプリ内ブラウザではなく、Safari/Chrome本体で開く\n' +
+                '3. ブラウザの設定で「サイト越えトラッキングを許可」「Cookieを許可」にする'
+            );
+        }
+
         // ページ読み込み時に登録済みかチェック
         document.addEventListener('DOMContentLoaded', function() {
             // localStorageが使用可能か確認
@@ -318,6 +340,11 @@
             
             // Googleログインボタンのクリックイベント
             document.getElementById('googleLoginBtn').addEventListener('click', function() {
+                if (!isSessionStorageAvailable()) {
+                    alertSessionStorageIssue();
+                    return;
+                }
+
                 // まずポップアップで試行
                 auth.signInWithPopup(provider)
                     .then((result) => {
