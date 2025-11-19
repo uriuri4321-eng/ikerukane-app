@@ -277,14 +277,14 @@ window.addEventListener("load", () => {
                 localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
                 
                 // Firestoreにも更新を反映
-                if (db) {
+                if (typeof db !== 'undefined' && db) {
                     const updateData = {
                         lat: lat,
                         lng: lng,
                         money: setmoney
                     };
 
-                    if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                    if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
                         updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
                     }
 
