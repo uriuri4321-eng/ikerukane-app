@@ -611,6 +611,7 @@
       <div class="account-info-section">
         <h4>⚙️ 操作</h4>
         <button class="menu-action-btn view-completed" onclick="viewCompletedEvents()">✅ 終了した予定一覧を見る</button>
+        <button class="menu-action-btn" onclick="showAccountSettings()" style="background: #2196F3;">👤 アカウント設定</button>
         <button class="menu-action-btn logout" onclick="logout()">🚪 ログアウト</button>
       </div>
     </div>
@@ -624,6 +625,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/account-settings.js"></script>
   <script>
     // 最終ログイン日時を更新
     document.addEventListener('DOMContentLoaded', function() {
