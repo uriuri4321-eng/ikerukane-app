@@ -46,27 +46,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const eventKeys = allKeys.filter(key => key.startsWith('events_') || key.startsWith('completedEvents_'));
     console.log('calendar.js - localStorage内の予定関連キー:', eventKeys);
     
-    // 既存の共有されている予定履歴をリセット（全ユーザーで共有されていた履歴を削除）
+    // 旧仕様で共有履歴を使っていたキーが残っていれば一度だけリセット
     if (localStorage.getItem('eventLocationHistory')) {
-        console.log('共有されている予定履歴をリセットします');
+        console.log('旧形式の予定履歴データを削除します（ユーザー単位の履歴に移行済み）');
         localStorage.removeItem('eventLocationHistory');
     }
-    
-    // 全てのユーザーの予定履歴をリセット
-    function resetAllEventHistory() {
-        console.log('全てのユーザーの予定履歴をリセットします');
-        // localStorageの全てのキーを取得
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-            if (key.startsWith('eventLocationHistory_')) {
-                localStorage.removeItem(key);
-                console.log(`削除: ${key}`);
-            }
-        });
-    }
-    
-    // ページ読み込み時に一度だけ実行
-    resetAllEventHistory();
 
     const dataReadyPromise = initializeCalendarData();
 
