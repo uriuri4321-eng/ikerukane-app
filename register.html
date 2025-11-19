@@ -236,11 +236,28 @@
                                 })
                                 .catch((redirectError) => {
                                     console.error('Google登録エラー（リダイレクト）:', redirectError);
-                                    let errorMessage = 'Googleアカウントでの登録に失敗しました。\n';
+                                    let errorMessage = 'Googleアカウントでの登録に失敗しました。\n\n';
                                     if (redirectError.code === 'auth/unauthorized-domain') {
-                                        errorMessage += 'このドメインは認証されていません。Firebase Consoleで承認済みドメインを確認してください。';
+                                        const currentHost = window.location.host;
+                                        errorMessage += '【現在のURL】\n' + currentHost + '\n\n';
+                                        errorMessage += '【解決方法】\n';
+                                        errorMessage += '1. Firebase Console (https://console.firebase.google.com/) にアクセス\n';
+                                        errorMessage += '2. プロジェクト「ikerukane-app」を選択\n';
+                                        errorMessage += '3. Authentication > Sign-in method を開く\n';
+                                        errorMessage += '4. 「承認済みドメイン」セクションで以下を追加：\n';
+                                        errorMessage += '   - localhost\n';
+                                        errorMessage += '   - 127.0.0.1\n';
+                                        if (currentHost.includes(':')) {
+                                            errorMessage += '   - ' + currentHost + '\n';
+                                        }
+                                        errorMessage += '\n詳細は「Firebase承認済みドメイン設定手順.md」を参照してください。';
                                     } else if (redirectError.code === 'auth/operation-not-allowed') {
-                                        errorMessage += 'Google認証が有効になっていません。Firebase ConsoleでGoogle認証を有効にしてください。';
+                                        errorMessage += 'Google認証が有効になっていません。\n\n';
+                                        errorMessage += '【解決方法】\n';
+                                        errorMessage += '1. Firebase Console (https://console.firebase.google.com/) にアクセス\n';
+                                        errorMessage += '2. プロジェクト「ikerukane-app」を選択\n';
+                                        errorMessage += '3. Authentication > Sign-in method を開く\n';
+                                        errorMessage += '4. 「Google」をクリックして有効化\n';
                                     } else {
                                         errorMessage += 'エラー: ' + redirectError.message;
                                     }
@@ -248,11 +265,28 @@
                                 });
                         } else {
                             // その他のエラー
-                            let errorMessage = 'Googleアカウントでの登録に失敗しました。\n';
+                            let errorMessage = 'Googleアカウントでの登録に失敗しました。\n\n';
                             if (error.code === 'auth/unauthorized-domain') {
-                                errorMessage += 'このドメインは認証されていません。Firebase Consoleで承認済みドメインを確認してください。';
+                                const currentHost = window.location.host;
+                                errorMessage += '【現在のURL】\n' + currentHost + '\n\n';
+                                errorMessage += '【解決方法】\n';
+                                errorMessage += '1. Firebase Console (https://console.firebase.google.com/) にアクセス\n';
+                                errorMessage += '2. プロジェクト「ikerukane-app」を選択\n';
+                                errorMessage += '3. Authentication > Sign-in method を開く\n';
+                                errorMessage += '4. 「承認済みドメイン」セクションで以下を追加：\n';
+                                errorMessage += '   - localhost\n';
+                                errorMessage += '   - 127.0.0.1\n';
+                                if (currentHost.includes(':')) {
+                                    errorMessage += '   - ' + currentHost + '\n';
+                                }
+                                errorMessage += '\n詳細は「Firebase承認済みドメイン設定手順.md」を参照してください。';
                             } else if (error.code === 'auth/operation-not-allowed') {
-                                errorMessage += 'Google認証が有効になっていません。Firebase ConsoleでGoogle認証を有効にしてください。';
+                                errorMessage += 'Google認証が有効になっていません。\n\n';
+                                errorMessage += '【解決方法】\n';
+                                errorMessage += '1. Firebase Console (https://console.firebase.google.com/) にアクセス\n';
+                                errorMessage += '2. プロジェクト「ikerukane-app」を選択\n';
+                                errorMessage += '3. Authentication > Sign-in method を開く\n';
+                                errorMessage += '4. 「Google」をクリックして有効化\n';
                             } else if (error.code === 'auth/popup-closed-by-user') {
                                 errorMessage += '登録ウィンドウが閉じられました。再度お試しください。';
                             } else {
