@@ -224,6 +224,7 @@ window.addEventListener("load", () => {
     // calendar.htmlから予定情報を取得
     const eventTitle = localStorage.getItem('eventTitle');
     const eventDeadline = localStorage.getItem('eventDeadline');
+    const selectedEventId = localStorage.getItem('selectedEventId');
     
     // 予定情報がない場合は警告
     if (!eventTitle || !eventDeadline) {
@@ -277,29 +278,53 @@ window.addEventListener("load", () => {
                 
                 // Firestoreにも更新を反映
                 if (db) {
-                    db.collection('events')
-                        .where('userId', '==', currentUserId)
-                        .where('title', '==', eventTitle)
-                        .where('start', '==', eventDeadline)
-                        .where('status', '==', 'active')
-                        .get()
-                        .then((querySnapshot) => {
-                            if (!querySnapshot.empty) {
-                                const doc = querySnapshot.docs[0];
-                                doc.ref.update({
-                                    lat: lat,
-                                    lng: lng,
-                                    money: setmoney
-                                }).then(() => {
-                                    console.log('Firestoreの予定を更新しました:', doc.id);
-                                }).catch((error) => {
-                                    console.error('Firestoreの予定更新エラー:', error);
-                                });
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('Firestoreからの予定検索エラー:', error);
-                        });
+                    const updateData = {
+                        lat: lat,
+                        lng: lng,
+                        money: setmoney
+                    };
+
+                    if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                        updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    }
+
+                    const applyUpdate = (docRef, docIdLabel) => {
+                        return docRef.update(updateData)
+                            .then(() => {
+                                console.log('Firestoreの予定を更新しました:', docIdLabel);
+                            });
+                    };
+
+                    const fallbackUpdate = () => {
+                        db.collection('events')
+                            .where('userId', '==', currentUserId)
+                            .where('title', '==', eventTitle)
+                            .where('start', '==', eventDeadline)
+                            .where('status', '==', 'active')
+                            .limit(1)
+                            .get()
+                            .then((querySnapshot) => {
+                                if (!querySnapshot.empty) {
+                                    const doc = querySnapshot.docs[0];
+                                    applyUpdate(doc.ref, doc.id).catch((error) => {
+                                        console.error('Firestoreの予定更新エラー:', error);
+                                    });
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('Firestoreからの予定検索エラー:', error);
+                            });
+                    };
+
+                    if (selectedEventId) {
+                        applyUpdate(db.collection('events').doc(selectedEventId), selectedEventId)
+                            .catch((error) => {
+                                console.error('Firestoreの予定更新エラー:', error);
+                                fallbackUpdate();
+                            });
+                    } else {
+                        fallbackUpdate();
+                    }
                 }
             }
         }

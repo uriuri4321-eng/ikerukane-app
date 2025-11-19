@@ -7,6 +7,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const reserveBtn = document.getElementById('reserveBtn');
     const eventsContainer = document.getElementById('eventsContainer');
 
+    if (eventsContainer) {
+        eventsContainer.innerHTML = '<div class="no-events">予定を読み込み中です...</div>';
+    }
+
     // 現在のユーザーIDを取得
     const currentUserId = localStorage.getItem('currentUserId');
     console.log('calendar.js - 現在のユーザーID:', currentUserId);
@@ -64,6 +68,248 @@ document.addEventListener('DOMContentLoaded', function() {
     // ページ読み込み時に一度だけ実行
     resetAllEventHistory();
 
+    const dataReadyPromise = initializeCalendarData();
+
+    async function initializeCalendarData() {
+        await syncEventsFromFirestore();
+        moveExpiredEvents();
+        displayEvents();
+        displayEventHistory();
+    }
+
+    async function syncEventsFromFirestore() {
+        if (!db || !currentUserId) {
+            console.warn('Firestoreが利用できないため、ローカルデータを使用します。');
+            savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+            return;
+        }
+
+        const localActiveCache = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+        const localCompletedCache = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+
+        try {
+            const activeSnapshot = await db.collection('events')
+                .where('userId', '==', currentUserId)
+                .where('status', '==', 'active')
+                .get();
+
+            const completedSnapshot = await db.collection('events')
+                .where('userId', '==', currentUserId)
+                .where('status', '==', 'completed')
+                .get();
+
+            const failedSnapshot = await db.collection('events')
+                .where('userId', '==', currentUserId)
+                .where('status', '==', 'failed')
+                .get();
+
+            savedEvents = activeSnapshot.docs.map(normalizeEventDoc);
+            completedEvents = [
+                ...completedSnapshot.docs.map(normalizeEventDoc),
+                ...failedSnapshot.docs.map(normalizeEventDoc)
+            ].sort((a, b) => {
+                const dateA = new Date(a.completedAt || a.end || a.start);
+                const dateB = new Date(b.completedAt || b.end || b.start);
+                return dateB - dateA;
+            });
+
+            savedEvents = await migrateMissingEventsToFirestore(localActiveCache, savedEvents, 'active');
+            completedEvents = await migrateMissingEventsToFirestore(localCompletedCache, completedEvents, 'completed');
+
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+            localStorage.setItem(completedEventsKey, JSON.stringify(completedEvents));
+        } catch (error) {
+            console.error('Firestoreからの予定取得に失敗しました:', error);
+            savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+        }
+    }
+
+    function normalizeEventDoc(doc) {
+        const data = doc.data();
+        const normalized = {
+            ...data,
+            id: data.id || doc.id,
+            firestoreId: doc.id
+        };
+
+        if (data.createdAt && typeof data.createdAt.toDate === 'function') {
+            normalized.createdAt = data.createdAt.toDate().toISOString();
+        }
+        if (data.updatedAt && typeof data.updatedAt.toDate === 'function') {
+            normalized.updatedAt = data.updatedAt.toDate().toISOString();
+        }
+        if (data.completedAt && typeof data.completedAt.toDate === 'function') {
+            normalized.completedAt = data.completedAt.toDate().toISOString();
+        }
+
+        return normalized;
+    }
+
+    function getEventDocId(event) {
+        if (!event) return null;
+        if (event.firestoreId) return event.firestoreId;
+        if (typeof event.id === 'string' && event.id.trim() !== '') return event.id;
+        return null;
+    }
+
+    function getServerTimestamp() {
+        if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
+            return firebase.firestore.FieldValue.serverTimestamp();
+        }
+        return null;
+    }
+
+    function updateEventDocument(event, data, options = {}) {
+        if (!db || !currentUserId || !event) return;
+
+        const docId = getEventDocId(event);
+        const updatePayload = { ...data };
+        const serverTimestamp = getServerTimestamp();
+        if (serverTimestamp) {
+            updatePayload.updatedAt = serverTimestamp;
+            if (options.includeCompletedAt && !updatePayload.completedAt) {
+                updatePayload.completedAt = serverTimestamp;
+            }
+        }
+
+        if (docId) {
+            db.collection('events').doc(docId).update(updatePayload)
+                .catch((error) => {
+                    console.error('Firestoreの予定更新エラー:', error);
+                });
+            return;
+        }
+
+        // フォールバック：タイトルと開始日時で検索
+        db.collection('events')
+            .where('userId', '==', currentUserId)
+            .where('title', '==', event.title)
+            .where('start', '==', event.start)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get()
+            .then((snapshot) => {
+                if (!snapshot.empty) {
+                    snapshot.docs[0].ref.update(updatePayload)
+                        .catch((error) => {
+                            console.error('Firestoreの予定更新エラー:', error);
+                        });
+                }
+            })
+            .catch((error) => {
+                console.error('Firestoreからの予定検索エラー:', error);
+            });
+    }
+
+    function deleteEventDocument(event) {
+        if (!db || !currentUserId || !event) return;
+
+        const docId = getEventDocId(event);
+        if (docId) {
+            db.collection('events').doc(docId).delete()
+                .catch((error) => {
+                    console.error('Firestoreからの予定削除エラー:', error);
+                });
+            return;
+        }
+
+        // フォールバック：タイトルと開始日時で検索
+        db.collection('events')
+            .where('userId', '==', currentUserId)
+            .where('title', '==', event.title)
+            .where('start', '==', event.start)
+            .where('status', '==', 'active')
+            .limit(1)
+            .get()
+            .then((snapshot) => {
+                snapshot.forEach((doc) => {
+                    doc.ref.delete().catch((error) => {
+                        console.error('Firestoreからの予定削除エラー:', error);
+                    });
+                });
+            })
+            .catch((error) => {
+                console.error('Firestoreからの予定検索エラー:', error);
+            });
+    }
+
+    async function migrateMissingEventsToFirestore(localCache, firestoreEvents, defaultStatus) {
+        if (!Array.isArray(localCache) || localCache.length === 0) {
+            return firestoreEvents;
+        }
+
+        if (!Array.isArray(firestoreEvents)) {
+            firestoreEvents = [];
+        }
+
+        let updatedEvents = [...firestoreEvents];
+        let hasChanges = false;
+
+        for (const localEvent of localCache) {
+            if (!localEvent) continue;
+
+            const baseStatus = localEvent.status || defaultStatus || 'active';
+            const alreadyExists = updatedEvents.find(event =>
+                event.title === localEvent.title &&
+                event.start === localEvent.start &&
+                (event.status || baseStatus) === baseStatus
+            );
+
+            if (alreadyExists) {
+                continue;
+            }
+
+            if (localEvent.firestoreId) {
+                updatedEvents.push(localEvent);
+                hasChanges = true;
+                continue;
+            }
+
+            if (!db || !currentUserId) {
+                updatedEvents.push(localEvent);
+                hasChanges = true;
+                continue;
+            }
+
+            try {
+                const docRef = db.collection('events').doc();
+                const payload = {
+                    ...localEvent,
+                    id: docRef.id,
+                    firestoreId: docRef.id,
+                    userId: currentUserId,
+                    status: baseStatus
+                };
+
+                if (!localEvent.createdAt && firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                    payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                }
+                if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    if (baseStatus !== 'active' && !localEvent.completedAt) {
+                        payload.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    }
+                }
+
+                await docRef.set(payload);
+                updatedEvents.push({
+                    ...localEvent,
+                    id: docRef.id,
+                    firestoreId: docRef.id,
+                    status: baseStatus,
+                    userId: currentUserId
+                });
+                hasChanges = true;
+            } catch (error) {
+                console.error('Firestoreへの予定移行エラー:', error);
+            }
+        }
+
+        return hasChanges ? updatedEvents : firestoreEvents;
+    }
+
     // 期日が過ぎた予定を自動的に終了した予定リストに移動
     function moveExpiredEvents() {
         const now = new Date();
@@ -78,30 +324,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 成功/失敗の判定（デフォルトは失敗として扱う）
                 event.status = event.status === 'completed' ? 'completed' : 'failed';
                 expiredEvents.push(event);
-                
+
                 // Firestoreにも更新を反映
-                if (db && currentUserId && event.id) {
-                    db.collection('events')
-                        .where('userId', '==', currentUserId)
-                        .where('title', '==', event.title)
-                        .where('start', '==', event.start)
-                        .where('status', '==', 'active')
-                        .get()
-                        .then((querySnapshot) => {
-                            if (!querySnapshot.empty) {
-                                const doc = querySnapshot.docs[0];
-                                doc.ref.update({
-                                    status: event.status,
-                                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
-                                }).catch((error) => {
-                                    console.error('Firestoreの予定更新エラー:', error);
-                                });
-                            }
-                        })
-                        .catch((error) => {
-                            console.error('Firestoreからの予定検索エラー:', error);
-                        });
-                }
+                updateEventDocument(event, { status: event.status }, { includeCompletedAt: true });
             } else {
                 // まだ期日が来ていない予定は現在のリストに残す
                 activeEvents.push(event);
@@ -135,7 +360,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 保存ボタンのクリックイベント
-    saveBtn.addEventListener('click', function() {
+    saveBtn.addEventListener('click', async function() {
+        await dataReadyPromise;
+
         const title = titleInput.value.trim();
         const deadline = deadlineInput.value;
         const saveToHistory = document.getElementById('saveToHistory').checked;
@@ -155,41 +382,48 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const newEvent = {
-            id: Date.now(), // 一意のIDを生成
+            id: Date.now().toString(),
+            firestoreId: null,
+            userId: currentUserId,
             title: title,
             start: deadline,
             end: deadline,
             allDay: false,
             createdAt: new Date().toISOString(),
-            status: 'active', // 予定の状態: active, completed, failed
-            lat: null, // 位置情報（後で設定）
-            lng: null, // 位置情報（後で設定）
-            money: null // 課金額（後で設定）
+            updatedAt: new Date().toISOString(),
+            status: 'active',
+            lat: null,
+            lng: null,
+            money: null
         };
+
+        if (db && currentUserId) {
+            try {
+                const docRef = db.collection('events').doc();
+                const firestorePayload = {
+                    ...newEvent,
+                    id: docRef.id,
+                    firestoreId: docRef.id,
+                    userId: currentUserId,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                await docRef.set(firestorePayload);
+                newEvent.id = docRef.id;
+                newEvent.firestoreId = docRef.id;
+            } catch (error) {
+                console.error('Firestoreへの予定保存エラー:', error);
+            }
+        }
 
         savedEvents.push(newEvent);
         localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
-        
-        // Firestoreにも保存
-        if (db && currentUserId) {
-            const eventData = {
-                userId: currentUserId,
-                ...newEvent,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            db.collection('events').add(eventData)
-                .then((docRef) => {
-                    console.log('Firestoreに予定を保存しました:', docRef.id);
-                })
-                .catch((error) => {
-                    console.error('Firestoreへの予定保存エラー:', error);
-                });
-        }
 
         // 最新の予定情報を保存（map.htmlで使用）
         localStorage.setItem('eventTitle', title);
         localStorage.setItem('eventDeadline', deadline);
         localStorage.setItem('saveToHistory', saveToHistory ? 'true' : 'false');
+        localStorage.setItem('selectedEventId', newEvent.firestoreId || newEvent.id);
 
         eventForm.style.display = 'none';
         displayEvents(); // 一覧を更新
@@ -247,16 +481,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     // 予定確認（check.htmlに遷移）
-    window.selectEvent = function(eventId) {
-        // 最新の予定データを読み込み（ユーザーごと）
-        const currentUserId = localStorage.getItem('currentUserId');
-        const eventsKey = `events_${currentUserId}`;
-        const currentEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
-        const event = currentEvents.find(e => e.id == eventId);
+    window.selectEvent = async function(eventId) {
+        await dataReadyPromise;
+
+        let event = savedEvents.find(e => e.id == eventId);
+        if (!event) {
+            const fallbackEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            event = fallbackEvents.find(e => e.id == eventId);
+        }
+
         if (event) {
             // 予定情報をlocalStorageに保存
             localStorage.setItem('eventTitle', event.title);
             localStorage.setItem('eventDeadline', event.start);
+            localStorage.setItem('selectedEventId', getEventDocId(event) || '');
             
             // 位置情報と課金額が設定されているか確認
             if (event.lat && event.lng && event.money !== null) {
@@ -276,34 +514,21 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // 予定削除
-    window.deleteEvent = function(eventId) {
+    window.deleteEvent = async function(eventId) {
+        await dataReadyPromise;
+
         if (confirm('この予定を削除しますか？')) {
             const eventToDelete = savedEvents.find(e => e.id == eventId);
             savedEvents = savedEvents.filter(e => e.id != eventId);
             localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
             
             // Firestoreからも削除
-            if (db && currentUserId && eventToDelete) {
-                db.collection('events')
-                    .where('userId', '==', currentUserId)
-                    .where('title', '==', eventToDelete.title)
-                    .where('start', '==', eventToDelete.start)
-                    .where('status', '==', 'active')
-                    .get()
-                    .then((querySnapshot) => {
-                        querySnapshot.forEach((doc) => {
-                            doc.ref.delete()
-                                .then(() => {
-                                    console.log('Firestoreから予定を削除しました:', doc.id);
-                                })
-                                .catch((error) => {
-                                    console.error('Firestoreからの予定削除エラー:', error);
-                                });
-                        });
-                    })
-                    .catch((error) => {
-                        console.error('Firestoreからの予定検索エラー:', error);
-                    });
+            if (eventToDelete) {
+                deleteEventDocument(eventToDelete);
+                const selectedId = localStorage.getItem('selectedEventId');
+                if (selectedId && selectedId === (getEventDocId(eventToDelete) || '')) {
+                    localStorage.removeItem('selectedEventId');
+                }
             }
             
             displayEvents(); // 一覧を更新

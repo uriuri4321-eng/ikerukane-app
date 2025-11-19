@@ -590,6 +590,7 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
         if (currentEventIndex !== -1) {
             // 予定を終了した予定リストに移動
             const event = savedEvents[currentEventIndex];
+            const firestoreDocId = (event && (event.firestoreId || (typeof event.id === 'string' ? event.id : null))) || localStorage.getItem('selectedEventId');
             event.status = status;
             event.completedAt = new Date().toISOString();
             event.penaltyAmount = penaltyAmount;
@@ -610,61 +611,82 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
             
             // Firestoreに予定の状態を更新
             if (db && currentUserId) {
-                // Firestoreから該当する予定を検索して更新
-                db.collection('events')
-                    .where('userId', '==', currentUserId)
-                    .where('title', '==', eventTitle)
-                    .where('start', '==', eventDeadline)
-                    .where('status', '==', 'active')
-                    .get()
-                    .then((querySnapshot) => {
-                        if (!querySnapshot.empty) {
-                            // 最初の一致する予定を更新
-                            const doc = querySnapshot.docs[0];
-                            const updateData = {
-                                status: status,
-                                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                penaltyAmount: penaltyAmount
-                            };
-                            if (status === 'completed' && preventedAmount) {
-                                updateData.preventedAmount = preventedAmount;
-                            }
-                            
-                            doc.ref.update(updateData)
-                                .then(() => {
-                                    console.log('Firestoreの予定を更新しました:', doc.id);
-                                })
-                                .catch((error) => {
+                const updateData = {
+                    status: status,
+                    penaltyAmount: penaltyAmount
+                };
+
+                if (status === 'completed' && preventedAmount) {
+                    updateData.preventedAmount = preventedAmount;
+                }
+
+                if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                    updateData.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+                    updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                } else {
+                    updateData.completedAt = new Date().toISOString();
+                    updateData.updatedAt = new Date().toISOString();
+                }
+
+                const applyUpdate = (docRef, docIdLabel) => {
+                    return docRef.update(updateData)
+                        .then(() => {
+                            console.log('Firestoreの予定を更新しました:', docIdLabel);
+                        });
+                };
+
+                const fallbackUpdate = () => {
+                    db.collection('events')
+                        .where('userId', '==', currentUserId)
+                        .where('title', '==', eventTitle)
+                        .where('start', '==', eventDeadline)
+                        .where('status', '==', 'active')
+                        .limit(1)
+                        .get()
+                        .then((querySnapshot) => {
+                            if (!querySnapshot.empty) {
+                                const doc = querySnapshot.docs[0];
+                                applyUpdate(doc.ref, doc.id).catch((error) => {
                                     console.error('Firestoreの予定更新エラー:', error);
                                 });
-                        } else {
-                            // 該当する予定がない場合は新規作成
-                            const eventData = {
-                                userId: currentUserId,
-                                title: eventTitle,
-                                start: eventDeadline,
-                                end: eventDeadline,
-                                status: status,
-                                completedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                                penaltyAmount: penaltyAmount,
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            };
-                            if (status === 'completed' && preventedAmount) {
-                                eventData.preventedAmount = preventedAmount;
+                            } else {
+                                const eventData = {
+                                    userId: currentUserId,
+                                    title: eventTitle,
+                                    start: eventDeadline,
+                                    end: eventDeadline,
+                                    status: status,
+                                    penaltyAmount: penaltyAmount,
+                                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                };
+                                if (status === 'completed' && preventedAmount) {
+                                    eventData.preventedAmount = preventedAmount;
+                                }
+                                
+                                db.collection('events').add(eventData)
+                                    .then((docRef) => {
+                                        console.log('Firestoreに予定を保存しました:', docRef.id);
+                                    })
+                                    .catch((error) => {
+                                        console.error('Firestoreへの予定保存エラー:', error);
+                                    });
                             }
-                            
-                            db.collection('events').add(eventData)
-                                .then((docRef) => {
-                                    console.log('Firestoreに予定を保存しました:', docRef.id);
-                                })
-                                .catch((error) => {
-                                    console.error('Firestoreへの予定保存エラー:', error);
-                                });
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Firestoreからの予定検索エラー:', error);
-                    });
+                        })
+                        .catch((error) => {
+                            console.error('Firestoreからの予定検索エラー:', error);
+                        });
+                };
+
+                if (firestoreDocId) {
+                    applyUpdate(db.collection('events').doc(firestoreDocId), firestoreDocId)
+                        .catch((error) => {
+                            console.error('Firestoreの予定更新エラー:', error);
+                            fallbackUpdate();
+                        });
+                } else {
+                    fallbackUpdate();
+                }
             }
             
             // Firestoreに課金情報を保存（失敗時のみ）
@@ -674,6 +696,7 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
                     amount: penaltyAmount,
                     eventTitle: eventTitle,
                     eventDeadline: eventDeadline,
+                    eventId: firestoreDocId || null,
                     completedAt: firebase.firestore.FieldValue.serverTimestamp(),
                     status: 'failed'
                 };
@@ -686,6 +709,9 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
                         console.error('Firestoreへの課金情報保存エラー:', error);
                     });
             }
+
+            // 選択中のイベントIDをクリア
+            localStorage.removeItem('selectedEventId');
         }
     }
 }
