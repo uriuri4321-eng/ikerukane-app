@@ -51,26 +51,38 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('旧形式の予定履歴データを削除します（ユーザー単位の履歴に移行済み）');
         localStorage.removeItem('eventLocationHistory');
     }
-
+    
     const dataReadyPromise = initializeCalendarData();
 
     async function initializeCalendarData() {
+        console.log('initializeCalendarData開始');
         await syncEventsFromFirestore();
+        console.log('syncEventsFromFirestore完了');
         moveExpiredEvents();
         displayEvents();
         displayEventHistory();
     }
 
     async function syncEventsFromFirestore() {
+        console.log('syncEventsFromFirestore開始', { db: !!db, currentUserId });
         if (!db || !currentUserId) {
             console.warn('Firestoreが利用できないため、ローカルデータを使用します。');
             savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
             completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+            console.log('localStorageから読み込んだ予定:', {
+                savedEvents: savedEvents.length,
+                completedEvents: completedEvents.length,
+                sampleEvent: savedEvents.length > 0 ? savedEvents[0] : null
+            });
             return;
         }
 
         const localActiveCache = JSON.parse(localStorage.getItem(eventsKey) || '[]');
         const localCompletedCache = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
+        console.log('localStorageキャッシュ:', {
+            active: localActiveCache.length,
+            completed: localCompletedCache.length
+        });
 
         try {
             const activeSnapshot = await db.collection('events')
@@ -97,6 +109,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const dateB = new Date(b.completedAt || b.end || b.start);
                 return dateB - dateA;
             });
+            
+            // デバッグ: 取得した予定データを確認
+            console.log('Firestoreから取得した予定データ:', {
+                activeCount: savedEvents.length,
+                completedCount: completedEvents.length,
+                sampleEvent: savedEvents.length > 0 ? savedEvents[0] : null
+            });
+            
+            if (savedEvents.length > 0) {
+                savedEvents.forEach((event, index) => {
+                    console.log(`予定 ${index + 1}:`, {
+                        title: event.title,
+                        lat: event.lat,
+                        lng: event.lng,
+                        money: event.money,
+                        firestoreId: event.firestoreId
+                    });
+                });
+            }
 
             savedEvents = await migrateMissingEventsToFirestore(localActiveCache, savedEvents, 'active');
             completedEvents = await migrateMissingEventsToFirestore(localCompletedCache, completedEvents, 'completed');
@@ -308,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 成功/失敗の判定（デフォルトは失敗として扱う）
                 event.status = event.status === 'completed' ? 'completed' : 'failed';
                 expiredEvents.push(event);
-
+                
                 // Firestoreにも更新を反映
                 updateEventDocument(event, { status: event.status }, { includeCompletedAt: true });
             } else {
@@ -469,31 +500,77 @@ document.addEventListener('DOMContentLoaded', function() {
         await dataReadyPromise;
 
         let event = savedEvents.find(e => e.id == eventId || e.firestoreId === eventId);
+        console.log('savedEventsから検索:', {
+            eventId: eventId,
+            found: !!event,
+            savedEventsCount: savedEvents.length,
+            savedEvents: savedEvents.map(e => ({ id: e.id, firestoreId: e.firestoreId, title: e.title }))
+        });
+        
         if (!event) {
             const fallbackEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+            console.log('fallbackEventsから検索:', {
+                fallbackEventsCount: fallbackEvents.length,
+                fallbackEvents: fallbackEvents.map(e => ({ id: e.id, firestoreId: e.firestoreId, title: e.title }))
+            });
             event = fallbackEvents.find(e => e.id == eventId || e.firestoreId === eventId);
+            if (event) {
+                console.log('fallbackEventsから見つかりました:', event);
+            }
         }
 
         // Firestoreから直接取得を試行（最新データを取得）
         if (db && currentUserId && event) {
             const docId = getEventDocId(event);
+            console.log('selectEvent - イベント情報:', {
+                eventId: eventId,
+                foundEvent: event,
+                docId: docId,
+                currentLat: event.lat,
+                currentLng: event.lng,
+                currentMoney: event.money
+            });
+            
             if (docId) {
                 try {
                     const doc = await db.collection('events').doc(docId).get();
                     if (doc.exists) {
                         const firestoreData = doc.data();
+                        console.log('Firestoreから取得したデータ:', firestoreData);
+                        
                         // Firestoreのデータで位置情報と課金額を更新
-                        if (firestoreData.lat !== undefined) event.lat = firestoreData.lat;
-                        if (firestoreData.lng !== undefined) event.lng = firestoreData.lng;
-                        if (firestoreData.money !== undefined) event.money = firestoreData.money;
+                        if (firestoreData.lat !== undefined && firestoreData.lat !== null) {
+                            event.lat = firestoreData.lat;
+                            console.log('latを更新:', firestoreData.lat);
+                        }
+                        if (firestoreData.lng !== undefined && firestoreData.lng !== null) {
+                            event.lng = firestoreData.lng;
+                            console.log('lngを更新:', firestoreData.lng);
+                        }
+                        if (firestoreData.money !== undefined && firestoreData.money !== null) {
+                            event.money = firestoreData.money;
+                            console.log('moneyを更新:', firestoreData.money);
+                        }
+                        
+                        console.log('更新後のイベント情報:', {
+                            lat: event.lat,
+                            lng: event.lng,
+                            money: event.money
+                        });
+                    } else {
+                        console.warn('Firestoreにドキュメントが存在しません:', docId);
                     }
                 } catch (error) {
                     console.error('Firestoreからの予定取得エラー:', error);
                 }
+            } else {
+                console.warn('docIdが取得できませんでした');
             }
         }
 
         if (event) {
+            console.log('選択された予定の全データ:', event);
+            
             // 予定情報をlocalStorageに保存
             localStorage.setItem('eventTitle', event.title);
             localStorage.setItem('eventDeadline', event.start);
@@ -501,7 +578,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 位置情報と課金額が設定されているか確認
             // lat, lngが存在し、moneyがnullでもundefinedでもない（0は有効）
-            if (event.lat != null && event.lng != null && event.money != null && event.money !== undefined) {
+            const hasLocation = event.lat != null && event.lng != null;
+            const hasMoney = event.money != null && event.money !== undefined;
+            
+            console.log('位置情報と課金額の確認:', {
+                hasLocation: hasLocation,
+                lat: event.lat,
+                lng: event.lng,
+                hasMoney: hasMoney,
+                money: event.money
+            });
+            
+            if (hasLocation && hasMoney) {
                 // 位置情報と課金額が設定されている場合は、check.htmlに直接遷移
                 localStorage.setItem('Lat', event.lat);
                 localStorage.setItem('Lng', event.lng);
@@ -522,12 +610,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('目的地が設定されていません:', {
                     lat: event.lat,
                     lng: event.lng,
-                    money: event.money
+                    money: event.money,
+                    hasLocation: hasLocation,
+                    hasMoney: hasMoney
                 });
                 alert(`予定「${event.title}」の目的地が設定されていません。\n目的地を設定してください。`);
                 window.location.href = 'map.html';
             }
         } else {
+            console.error('予定が見つかりませんでした。eventId:', eventId);
             alert('予定が見つかりませんでした。');
         }
     };
