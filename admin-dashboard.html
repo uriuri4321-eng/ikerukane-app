@@ -178,6 +178,106 @@
         .refresh-btn:hover {
             background: #45a049;
         }
+        
+        .search-sort-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: #dc3545;
+        }
+        
+        .sort-select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .sort-select:focus {
+            outline: none;
+            border-color: #dc3545;
+        }
+        
+        .account-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .account-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .account-header-clickable {
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .account-header-clickable:hover {
+            opacity: 0.8;
+        }
+        
+        .account-stats {
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .account-stats.expanded {
+            display: grid;
+        }
+        
+        .account-info {
+            display: none;
+        }
+        
+        .account-info.expanded {
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .account-name::before {
+            content: '▶ ';
+            display: inline-block;
+            transition: transform 0.3s ease;
+            font-size: 12px;
+            color: #dc3545;
+        }
+        
+        .account-card.expanded .account-name::before {
+            transform: rotate(90deg);
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -195,6 +295,25 @@
         
         <div class="accounts-section">
             <h2>📊 登録済みアカウント一覧</h2>
+            
+            <div class="search-sort-container">
+                <input type="text" id="searchInput" class="search-box" placeholder="🔍 アカウント名・メールアドレスで検索...">
+                <select id="sortSelect" class="sort-select">
+                    <option value="name-asc">名前順（あいうえお）</option>
+                    <option value="name-desc">名前順（逆順）</option>
+                    <option value="registered-asc">登録順（古い順）</option>
+                    <option value="registered-desc">登録順（新しい順）</option>
+                    <option value="login-asc">最終ログイン（古い順）</option>
+                    <option value="login-desc">最終ログイン（新しい順）</option>
+                    <option value="penalty-asc">課金額（少ない順）</option>
+                    <option value="penalty-desc">課金額（多い順）</option>
+                    <option value="prevented-asc">課金阻止額（少ない順）</option>
+                    <option value="prevented-desc">課金阻止額（多い順）</option>
+                    <option value="events-asc">予定数（少ない順）</option>
+                    <option value="events-desc">予定数（多い順）</option>
+                </select>
+            </div>
+            
             <div id="accountsList">
                 <!-- アカウント一覧がここに表示されます -->
             </div>
@@ -202,6 +321,10 @@
     </div>
 
     <script>
+        // グローバル変数：アカウントデータと統計情報を保持
+        let allAccountsData = [];
+        let allAccountsStats = {};
+        
         // 管理者認証チェック
         // ファイル更新: 2025-01-13 構文エラー修正
         document.addEventListener('DOMContentLoaded', function() {
@@ -301,8 +424,14 @@
                     // 統計情報を計算
                     await calculateStats(accounts);
                     
+                    // グローバル変数に保存
+                    allAccountsData = accounts;
+                    
                     // アカウント一覧を表示
                     await displayAccounts(accounts);
+                    
+                    // 検索・ソート機能をセットアップ
+                    setupSearchAndSort();
                 } catch (error) {
                     console.error('Firestore読み込みエラー:', error);
                     console.error('エラー詳細:', {
@@ -356,11 +485,17 @@
                 index === self.findIndex(a => a.email === account.email)
             );
             
-            // 統計情報を計算
-            await calculateStats(accounts);
-            
-            // アカウント一覧を表示
-            await displayAccounts(accounts);
+                    // 統計情報を計算
+                    await calculateStats(accounts);
+                    
+                    // グローバル変数に保存
+                    allAccountsData = accounts;
+                    
+                    // アカウント一覧を表示
+                    await displayAccounts(accounts);
+                    
+                    // 検索・ソート機能をセットアップ
+                    setupSearchAndSort();
         }
         
         async function calculateStats(accounts) {
@@ -371,6 +506,19 @@
             let totalFailed = 0;
             let totalPreventedAmount = 0;
             let totalFailedAmount = 0;
+            
+            // 各アカウントの統計情報を初期化
+            allAccountsStats = {};
+            accounts.forEach(account => {
+                allAccountsStats[account.id] = {
+                    totalEvents: 0,
+                    completedEvents: 0,
+                    successfulEvents: 0,
+                    failedEvents: 0,
+                    preventedAmount: 0,
+                    failedAmount: 0
+                };
+            });
             
             // Firestoreから全ユーザーの予定データを取得
             if (db) {
@@ -387,15 +535,36 @@
                         .get();
                     totalCompleted = completedEventsSnapshot.size;
                     
-                    // 成功/失敗の統計を計算
+                    // 成功/失敗の統計を計算（ユーザーごとにも集計）
                     completedEventsSnapshot.forEach((doc) => {
                         const eventData = doc.data();
+                        const userId = eventData.userId;
+                        if (userId && allAccountsStats[userId]) {
+                            if (eventData.status === 'completed') {
+                                allAccountsStats[userId].successfulEvents++;
+                                allAccountsStats[userId].preventedAmount += (eventData.preventedAmount || 0);
+                                allAccountsStats[userId].completedEvents++;
+                            } else if (eventData.status === 'failed') {
+                                allAccountsStats[userId].failedEvents++;
+                                allAccountsStats[userId].failedAmount += (eventData.penaltyAmount || 0);
+                                allAccountsStats[userId].completedEvents++;
+                            }
+                        }
                         if (eventData.status === 'completed') {
                             totalSuccessful++;
                             totalPreventedAmount += (eventData.preventedAmount || 0);
                         } else if (eventData.status === 'failed') {
                             totalFailed++;
                             totalFailedAmount += (eventData.penaltyAmount || 0);
+                        }
+                    });
+                    
+                    // アクティブな予定もユーザーごとに集計
+                    activeEventsSnapshot.forEach((doc) => {
+                        const eventData = doc.data();
+                        const userId = eventData.userId;
+                        if (userId && allAccountsStats[userId]) {
+                            allAccountsStats[userId].totalEvents++;
                         }
                     });
                     
@@ -415,6 +584,11 @@
                     penaltiesSnapshot.forEach((doc) => {
                         const data = doc.data();
                         if (data.status === 'failed' && data.amount) {
+                            const userId = data.userId;
+                            if (userId && allAccountsStats[userId]) {
+                                allAccountsStats[userId].failedEvents++;
+                                allAccountsStats[userId].failedAmount += data.amount;
+                            }
                             // 既にeventsコレクションから取得した失敗数と重複しないように、penaltiesは課金額のみ使用
                             totalFailedAmount += data.amount;
                         }
@@ -529,12 +703,17 @@
             }
         }
         
-        async function displayAccounts(accounts) {
+        async function displayAccounts(accounts, statsData = null) {
             const accountsList = document.getElementById('accountsList');
             
             if (accounts.length === 0) {
-                accountsList.innerHTML = '<div class="no-accounts">登録されているアカウントがありません。</div>';
+                accountsList.innerHTML = '<div class="no-results">該当するアカウントがありません。</div>';
                 return;
+            }
+            
+            // 統計データが渡されていない場合は取得
+            if (!statsData) {
+                statsData = allAccountsStats;
             }
             
             let html = '';
@@ -563,8 +742,8 @@
             }
             
             for (const account of accounts) {
-                // 各アカウントの統計情報を取得
-                let accountStats = {
+                // 統計情報を取得（既に計算済みの場合はそれを使用）
+                let accountStats = statsData[account.id] || {
                     totalEvents: 0,
                     completedEvents: 0,
                     successfulEvents: 0,
@@ -573,92 +752,10 @@
                     failedAmount: 0
                 };
                 
-                // Firestoreからユーザーごとの予定データを取得
-                if (db) {
-                    try {
-                        // 現在の予定を取得
-                        const activeEventsSnapshot = await db.collection('events')
-                            .where('userId', '==', account.id)
-                            .where('status', '==', 'active')
-                            .get();
-                        
-                        accountStats.totalEvents = activeEventsSnapshot.size;
-                        
-                        // 終了した予定を取得
-                        const completedEventsSnapshot = await db.collection('events')
-                            .where('userId', '==', account.id)
-                            .where('status', 'in', ['completed', 'failed'])
-                            .get();
-                        
-                        accountStats.completedEvents = completedEventsSnapshot.size;
-                        
-                        // 成功/失敗の統計を計算
-                        completedEventsSnapshot.forEach((doc) => {
-                            const eventData = doc.data();
-                            if (eventData.status === 'completed') {
-                                accountStats.successfulEvents++;
-                                accountStats.preventedAmount += (eventData.preventedAmount || 0);
-                            } else if (eventData.status === 'failed') {
-                                accountStats.failedEvents++;
-                                accountStats.failedAmount += (eventData.penaltyAmount || 0);
-                            }
-                        });
-                        
-                        console.log(`Firestoreから取得 - ${account.email}:`, accountStats);
-                    } catch (error) {
-                        console.error(`Firestoreからの予定データ取得エラー (${account.email}):`, error);
-                        // エラー時はlocalStorageから取得（フォールバック）
-                        try {
-                            const eventsKey = `events_${account.id}`;
-                            const completedEventsKey = `completedEvents_${account.id}`;
-                            
-                            const events = JSON.parse(localStorage.getItem(eventsKey) || '[]');
-                            const completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
-                            
-                            accountStats.totalEvents = events.length;
-                            accountStats.completedEvents = completedEvents.length;
-                            
-                            const successfulEvents = completedEvents.filter(e => e.status === 'completed');
-                            const failedEvents = completedEvents.filter(e => e.status === 'failed');
-                            
-                            accountStats.successfulEvents = successfulEvents.length;
-                            accountStats.failedEvents = failedEvents.length;
-                            
-                            accountStats.preventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                            accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
-                        } catch (e) {
-                            console.error('localStorageからの統計取得エラー:', e);
-                        }
-                    }
-                } else {
-                    // Firebaseが利用できない場合はlocalStorageから取得
-                    try {
-                        const eventsKey = `events_${account.id}`;
-                        const completedEventsKey = `completedEvents_${account.id}`;
-                        
-                        const events = JSON.parse(localStorage.getItem(eventsKey) || '[]');
-                        const completedEvents = JSON.parse(localStorage.getItem(completedEventsKey) || '[]');
-                        
-                        accountStats.totalEvents = events.length;
-                        accountStats.completedEvents = completedEvents.length;
-                        
-                        const successfulEvents = completedEvents.filter(e => e.status === 'completed');
-                        const failedEvents = completedEvents.filter(e => e.status === 'failed');
-                        
-                        accountStats.successfulEvents = successfulEvents.length;
-                        accountStats.failedEvents = failedEvents.length;
-                        
-                        accountStats.preventedAmount = successfulEvents.reduce((sum, e) => sum + (e.preventedAmount || 0), 0);
-                        accountStats.failedAmount = failedEvents.reduce((sum, e) => sum + (e.penaltyAmount || 0), 0);
-                    } catch (e) {
-                        console.error('localStorageからの統計取得エラー:', e);
-                    }
-                }
-                
-                // Firestoreから取得した課金情報を設定（penaltiesコレクションから）
+                // penaltiesコレクションからの課金情報を追加
                 if (penaltiesByUser[account.id]) {
-                    accountStats.failedEvents = penaltiesByUser[account.id].count;
-                    accountStats.failedAmount = penaltiesByUser[account.id].totalAmount;
+                    accountStats.failedEvents += penaltiesByUser[account.id].count;
+                    accountStats.failedAmount += penaltiesByUser[account.id].totalAmount;
                 }
                 
                 const registeredDate = account.registeredAt ? new Date(account.registeredAt).toLocaleString('ja-JP') : '不明';
@@ -667,16 +764,17 @@
                 // データ属性用にエスケープ処理（HTMLエンティティを使用）
                 const accountEmail = String(account.email || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
                 const accountId = String(account.id || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+                const accountName = String(account.username || '未設定').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
                 
-                html += '<div class="account-card">';
+                html += '<div class="account-card" data-account-id="' + accountId + '">';
                 html += '<div class="account-header" style="display: flex; justify-content: space-between; align-items: center;">';
-                html += '<div>';
-                html += '<div class="account-name">' + (account.username || '未設定') + '</div>';
+                html += '<div class="account-header-clickable" onclick="toggleAccountDetails(\'' + accountId + '\')" style="flex: 1;">';
+                html += '<div class="account-name">' + accountName + '</div>';
                 html += '<div class="account-email">' + (account.email || '未設定') + '</div>';
                 html += '</div>';
-                html += '<button class="delete-account-btn" data-email="' + accountEmail + '" data-account-id="' + accountId + '" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px;">削除</button>';
+                html += '<button class="delete-account-btn" data-email="' + accountEmail + '" data-account-id="' + accountId + '" onclick="event.stopPropagation(); deleteAccount(\'' + accountEmail + '\', \'' + accountId + '\')" style="background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 10px;">削除</button>';
                 html += '</div>';
-                html += '<div class="account-stats">';
+                html += '<div class="account-stats" id="stats-' + accountId + '">';
                 html += '<div class="account-stat-item"><div class="label">現在の予定</div><div class="value">' + accountStats.totalEvents + '</div></div>';
                 html += '<div class="account-stat-item"><div class="label">終了した予定</div><div class="value">' + accountStats.completedEvents + '</div></div>';
                 html += '<div class="account-stat-item"><div class="label">成功した予定</div><div class="value" style="color: #28a745;">' + accountStats.successfulEvents + '</div></div>';
@@ -684,7 +782,7 @@
                 html += '<div class="account-stat-item"><div class="label">課金阻止額</div><div class="value" style="color: #28a745;">¥' + accountStats.preventedAmount.toLocaleString() + '</div></div>';
                 html += '<div class="account-stat-item"><div class="label">失敗課金額</div><div class="value" style="color: #dc3545;">¥' + accountStats.failedAmount.toLocaleString() + '</div></div>';
                 html += '</div>';
-                html += '<div class="account-info">';
+                html += '<div class="account-info" id="info-' + accountId + '">';
                 html += '<strong>登録日時:</strong> ' + registeredDate + '<br>';
                 html += '<strong>最終ログイン:</strong> ' + lastLoginDate + '<br>';
                 html += (account.password ? '<strong>パスワード:</strong> ' + account.password + '<br>' : '<strong>パスワード:</strong> （Firebase認証のため非表示）<br>');
@@ -694,16 +792,103 @@
             }
             
             accountsList.innerHTML = html;
+        }
+        
+        // アカウント詳細の展開/折りたたみ
+        window.toggleAccountDetails = function(accountId) {
+            const card = document.querySelector(`[data-account-id="${accountId}"]`);
+            const stats = document.getElementById('stats-' + accountId);
+            const info = document.getElementById('info-' + accountId);
             
-            // 削除ボタンにイベントリスナーを追加
-            const deleteButtons = accountsList.querySelectorAll('.delete-account-btn');
-            deleteButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const email = this.getAttribute('data-email');
-                    const accountId = this.getAttribute('data-account-id');
-                    deleteAccount(email, accountId);
+            if (card && stats && info) {
+                const isExpanded = card.classList.contains('expanded');
+                if (isExpanded) {
+                    card.classList.remove('expanded');
+                    stats.classList.remove('expanded');
+                    info.classList.remove('expanded');
+                } else {
+                    card.classList.add('expanded');
+                    stats.classList.add('expanded');
+                    info.classList.add('expanded');
+                }
+            }
+        };
+        
+        // 検索・ソート機能のセットアップ
+        function setupSearchAndSort() {
+            const searchInput = document.getElementById('searchInput');
+            const sortSelect = document.getElementById('sortSelect');
+            
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    filterAndSortAccounts();
                 });
+            }
+            
+            if (sortSelect) {
+                sortSelect.addEventListener('change', function() {
+                    filterAndSortAccounts();
+                });
+            }
+        }
+        
+        // アカウントのフィルタリングとソート
+        function filterAndSortAccounts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const sortOption = document.getElementById('sortSelect').value;
+            
+            // 検索でフィルタリング
+            let filtered = allAccountsData.filter(account => {
+                const username = (account.username || '').toLowerCase();
+                const email = (account.email || '').toLowerCase();
+                return username.includes(searchTerm) || email.includes(searchTerm);
             });
+            
+            // ソート
+            filtered.sort((a, b) => {
+                const statsA = allAccountsStats[a.id] || {};
+                const statsB = allAccountsStats[b.id] || {};
+                
+                switch(sortOption) {
+                    case 'name-asc':
+                        return ((a.username || '') > (b.username || '')) ? 1 : -1;
+                    case 'name-desc':
+                        return ((a.username || '') < (b.username || '')) ? 1 : -1;
+                    case 'registered-asc':
+                        const regA = a.registeredAt ? new Date(a.registeredAt).getTime() : 0;
+                        const regB = b.registeredAt ? new Date(b.registeredAt).getTime() : 0;
+                        return regA - regB;
+                    case 'registered-desc':
+                        const regA2 = a.registeredAt ? new Date(a.registeredAt).getTime() : 0;
+                        const regB2 = b.registeredAt ? new Date(b.registeredAt).getTime() : 0;
+                        return regB2 - regA2;
+                    case 'login-asc':
+                        const loginA = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+                        const loginB = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+                        return loginA - loginB;
+                    case 'login-desc':
+                        const loginA2 = a.lastLoginAt ? new Date(a.lastLoginAt).getTime() : 0;
+                        const loginB2 = b.lastLoginAt ? new Date(b.lastLoginAt).getTime() : 0;
+                        return loginB2 - loginA2;
+                    case 'penalty-asc':
+                        return (statsA.failedAmount || 0) - (statsB.failedAmount || 0);
+                    case 'penalty-desc':
+                        return (statsB.failedAmount || 0) - (statsA.failedAmount || 0);
+                    case 'prevented-asc':
+                        return (statsA.preventedAmount || 0) - (statsB.preventedAmount || 0);
+                    case 'prevented-desc':
+                        return (statsB.preventedAmount || 0) - (statsA.preventedAmount || 0);
+                    case 'events-asc':
+                        return (statsA.totalEvents || 0) - (statsB.totalEvents || 0);
+                    case 'events-desc':
+                        return (statsB.totalEvents || 0) - (statsA.totalEvents || 0);
+                    default:
+                        return 0;
+                }
+            });
+            
+            // フィルタリング・ソート後のアカウントを表示
+            displayAccounts(filtered, allAccountsStats);
         }
     </script>
 </body>

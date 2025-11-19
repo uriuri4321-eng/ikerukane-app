@@ -468,10 +468,29 @@ document.addEventListener('DOMContentLoaded', function() {
     window.selectEvent = async function(eventId) {
         await dataReadyPromise;
 
-        let event = savedEvents.find(e => e.id == eventId);
+        let event = savedEvents.find(e => e.id == eventId || e.firestoreId === eventId);
         if (!event) {
             const fallbackEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
-            event = fallbackEvents.find(e => e.id == eventId);
+            event = fallbackEvents.find(e => e.id == eventId || e.firestoreId === eventId);
+        }
+
+        // Firestoreから直接取得を試行（最新データを取得）
+        if (db && currentUserId && event) {
+            const docId = getEventDocId(event);
+            if (docId) {
+                try {
+                    const doc = await db.collection('events').doc(docId).get();
+                    if (doc.exists) {
+                        const firestoreData = doc.data();
+                        // Firestoreのデータで位置情報と課金額を更新
+                        if (firestoreData.lat !== undefined) event.lat = firestoreData.lat;
+                        if (firestoreData.lng !== undefined) event.lng = firestoreData.lng;
+                        if (firestoreData.money !== undefined) event.money = firestoreData.money;
+                    }
+                } catch (error) {
+                    console.error('Firestoreからの予定取得エラー:', error);
+                }
+            }
         }
 
         if (event) {
@@ -481,19 +500,35 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('selectedEventId', getEventDocId(event) || '');
             
             // 位置情報と課金額が設定されているか確認
-            if (event.lat && event.lng && event.money !== null) {
+            // lat, lngが存在し、moneyがnullでもundefinedでもない（0は有効）
+            if (event.lat != null && event.lng != null && event.money != null && event.money !== undefined) {
                 // 位置情報と課金額が設定されている場合は、check.htmlに直接遷移
                 localStorage.setItem('Lat', event.lat);
                 localStorage.setItem('Lng', event.lng);
                 localStorage.setItem('money', event.money);
                 localStorage.setItem('date', event.start);
                 
+                console.log('予定情報をcheck.htmlに渡します:', {
+                    title: event.title,
+                    lat: event.lat,
+                    lng: event.lng,
+                    money: event.money,
+                    date: event.start
+                });
+                
                 window.location.href = 'check.html';
             } else {
                 // 位置情報が設定されていない場合は、map.htmlで設定を促す
+                console.log('目的地が設定されていません:', {
+                    lat: event.lat,
+                    lng: event.lng,
+                    money: event.money
+                });
                 alert(`予定「${event.title}」の目的地が設定されていません。\n目的地を設定してください。`);
                 window.location.href = 'map.html';
             }
+        } else {
+            alert('予定が見つかりませんでした。');
         }
     };
 
