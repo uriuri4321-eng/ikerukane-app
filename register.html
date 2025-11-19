@@ -88,6 +88,16 @@
         .back-link a:hover {
             color: #4CAF50;
         }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #googleSignUpBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 
@@ -135,26 +145,52 @@
     <script>
         // Googleアカウント登録のセットアップ
         function setupGoogleSignUp() {
-            if (!auth || !db) return;
-            
             const googleSignUpButton = document.getElementById('googleSignUpButton');
-            if (!googleSignUpButton) return;
+            if (!googleSignUpButton) {
+                console.error('googleSignUpButton要素が見つかりません');
+                return;
+            }
+            
+            // Firebaseの初期化チェック
+            if (!auth || !db) {
+                console.error('Firebaseが初期化されていません');
+                googleSignUpButton.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;">Firebaseの初期化に失敗しました。<br>ページをリロードしてください。</div>';
+                return;
+            }
             
             const provider = new firebase.auth.GoogleAuthProvider();
             
-            googleSignUpButton.innerHTML = `
-                <button id="googleSignUpBtn" style="width: 100%; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    Googleアカウントで登録
-                </button>
+            // ボタン要素を直接作成して追加
+            const button = document.createElement('button');
+            button.id = 'googleSignUpBtn';
+            button.style.cssText = 'width: 100%; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;';
+            button.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Googleアカウントで登録
             `;
             
-            document.getElementById('googleSignUpBtn').addEventListener('click', function() {
+            // 元のHTMLを保存
+            const originalButtonHTML = button.innerHTML;
+            
+            // イベントリスナーを追加してからDOMに追加
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Google登録ボタンがクリックされました');
+                
+                // ローディング状態を表示
+                button.disabled = true;
+                button.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <div style="width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #4285F4; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                        <span>認証中...</span>
+                    </div>
+                `;
+                
                 // まずポップアップで試行
                 auth.signInWithPopup(provider)
                     .then((result) => {
@@ -183,12 +219,20 @@
                         console.error('エラーコード:', error.code);
                         console.error('エラーメッセージ:', error.message);
                         
+                        // ボタンの状態をリセット（リダイレクト方式でない場合のみ）
+                        if (error.code !== 'auth/popup-blocked' && error.code !== 'auth/popup-closed-by-user') {
+                            button.disabled = false;
+                            button.innerHTML = originalButtonHTML;
+                        }
+                        
                         // ポップアップがブロックされた場合やauth/popup-blockedエラーの場合、リダイレクト方式にフォールバック
                         if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                             console.log('ポップアップがブロックされたため、リダイレクト方式に切り替えます');
+                            // リダイレクト方式ではページがリロードされるため、ボタンの状態はリセット不要
                             auth.signInWithRedirect(provider)
                                 .then(() => {
                                     // リダイレクトが成功した場合、ページがリロードされる
+                                    console.log('リダイレクトを開始しました');
                                 })
                                 .catch((redirectError) => {
                                     console.error('Google登録エラー（リダイレクト）:', redirectError);
@@ -219,12 +263,21 @@
                     });
             });
             
+            // ボタンをDOMに追加
+            googleSignUpButton.appendChild(button);
+            
             // リダイレクト後の認証結果を処理
             auth.getRedirectResult()
                 .then((result) => {
-                    if (result.user) {
+                    if (result && result.user) {
                         const user = result.user;
                         console.log('Google登録成功（リダイレクト）:', user.uid);
+                        
+                        // ローディング表示
+                        const googleSignUpButton = document.getElementById('googleSignUpButton');
+                        if (googleSignUpButton) {
+                            googleSignUpButton.innerHTML = '<div style="text-align: center; padding: 20px; color: #4CAF50;">認証中... しばらくお待ちください</div>';
+                        }
                         
                         // Firestoreにユーザー情報を保存
                         db.collection('users').doc(user.uid).set({
@@ -241,21 +294,51 @@
                             
                             alert('アカウントが作成されました！\n次回から自動的にログインされます。');
                             window.location.href = 'calendar.html';
+                        }).catch((error) => {
+                            console.error('Firestore保存エラー:', error);
+                            alert('ユーザー情報の保存に失敗しました。再度お試しください。');
+                            // セットアップを再実行
+                            setupGoogleSignUp();
                         });
                     }
                 })
                 .catch((error) => {
                     // リダイレクト結果がない場合はエラーを無視（通常の状態）
-                    if (error.code !== 'auth/credential-already-in-use' && error.code !== 'auth/email-already-in-use') {
+                    if (error.code && error.code !== 'auth/credential-already-in-use' && error.code !== 'auth/email-already-in-use') {
                         console.error('リダイレクト結果の処理エラー:', error);
+                        // エラーが発生した場合でもセットアップを再実行
+                        if (error.code !== 'auth/operation-not-allowed') {
+                            setupGoogleSignUp();
+                        }
                     }
                 });
         }
         
         // ページ読み込み時に登録済みかチェック
         document.addEventListener('DOMContentLoaded', function() {
-            // Googleアカウント登録のセットアップ
-            setupGoogleSignUp();
+            // Firebaseの初期化を待つ（最大10秒）
+            let retryCount = 0;
+            const maxRetries = 20;
+            
+            function trySetupGoogleSignUp() {
+                if (auth && db) {
+                    console.log('Firebase初期化完了、Google登録セットアップを開始');
+                    setupGoogleSignUp();
+                } else if (retryCount < maxRetries) {
+                    retryCount++;
+                    console.log(`Firebase初期化待機中... (${retryCount}/${maxRetries})`);
+                    setTimeout(trySetupGoogleSignUp, 500);
+                } else {
+                    console.error('Firebaseの初期化に失敗しました。ページをリロードしてください。');
+                    const googleSignUpButton = document.getElementById('googleSignUpButton');
+                    if (googleSignUpButton) {
+                        googleSignUpButton.innerHTML = '<div style="text-align: center; padding: 20px; color: #f44336;">Firebaseの初期化に失敗しました。<br>ページをリロードしてください。</div>';
+                    }
+                }
+            }
+            
+            // Googleアカウント登録のセットアップを試行
+            trySetupGoogleSignUp();
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             const currentUserId = localStorage.getItem('currentUserId');
             const userAccounts = JSON.parse(localStorage.getItem('userAccounts') || '[]');
