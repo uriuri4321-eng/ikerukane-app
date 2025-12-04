@@ -219,16 +219,35 @@
       background: rgba(0, 0, 0, 0.5);
       z-index: 1000;
       overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
     }
     
     .account-menu-content {
       max-width: 500px;
       margin: 50px auto;
       padding: 30px;
+      padding-bottom: 50px;
       background: white;
       border-radius: 15px;
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
       position: relative;
+      min-height: calc(100vh - 100px);
+    }
+    
+    /* スマホでのアカウントメニュー最適化 */
+    @media (max-width: 480px) {
+      .account-menu-content {
+        margin: 20px auto;
+        padding: 20px;
+        padding-bottom: 40px;
+        max-width: 90%;
+        min-height: calc(100vh - 40px);
+      }
+      
+      #accountMenu {
+        padding: 0;
+      }
     }
     
     .account-menu-header {
