@@ -351,6 +351,15 @@
       background: #c82333;
     }
     
+    .menu-action-btn.account-settings {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .menu-action-btn.account-settings:hover {
+      background: #1976D2;
+    }
+    
     /* タブスタイル */
     .tab-container {
       margin-bottom: 20px;
@@ -630,7 +639,7 @@
       <div class="account-info-section">
         <h4>⚙️ 操作</h4>
         <button class="menu-action-btn view-completed" onclick="viewCompletedEvents()">✅ 終了した予定一覧を見る</button>
-        <button class="menu-action-btn" onclick="showAccountSettings()" style="background: #2196F3; color: white;">👤 アカウント設定</button>
+        <button class="menu-action-btn account-settings" onclick="showAccountSettings()">👤 アカウント設定</button>
         <button class="menu-action-btn logout" onclick="logout()">🚪 ログアウト</button>
       </div>
     </div>
@@ -691,6 +700,9 @@
         const menu = document.getElementById('accountMenu');
         if (menu) {
           menu.style.display = 'block';
+          // 背景のスクロールを無効化（iOS Safari対応のためhtmlにも設定）
+          document.documentElement.style.overflow = 'hidden';
+          document.body.style.overflow = 'hidden';
           loadAccountInfo();
         }
       };
@@ -700,6 +712,9 @@
         const menu = document.getElementById('accountMenu');
         if (menu) {
           menu.style.display = 'none';
+          // 背景のスクロールを有効化
+          document.documentElement.style.overflow = '';
+          document.body.style.overflow = '';
         }
       };
       
