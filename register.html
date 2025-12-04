@@ -143,10 +143,10 @@
     </div>
     
     <!-- 位置情報の取り扱いに関する同意モーダル -->
-    <div id="locationConsentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; -webkit-overflow-scrolling: touch;">
-        <div style="max-width: 500px; margin: 50px auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); position: relative; min-height: calc(100vh - 100px);">
+    <div id="locationConsentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;">
+        <div id="locationConsentModalContent" style="max-width: 500px; margin: 50px auto; padding: 30px; padding-bottom: 100px; background: white; border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); position: relative;">
             <h2 style="text-align: center; margin-bottom: 20px; color: #333; font-size: 20px;">📍 位置情報の取り扱いに関する同意</h2>
-            <div style="max-height: 60vh; overflow-y: auto; padding: 20px; background: #f8f9fa; border-radius: 10px; margin-bottom: 20px; line-height: 1.8; color: #333;">
+            <div id="locationConsentText" style="padding: 20px; background: #f8f9fa; border-radius: 10px; margin-bottom: 20px; line-height: 1.8; color: #333;">
                 <p style="margin-bottom: 15px; font-weight: bold; color: #dc3545;">重要：本アプリを使用する前に、以下の内容を必ずお読みください。</p>
                 
                 <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">1. 位置情報の収集について</h3>
@@ -155,6 +155,10 @@
                 <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">2. 管理者による位置情報の閲覧について</h3>
                 <p style="margin-bottom: 15px; color: #dc3545; font-weight: bold;">本アプリの管理者は、システムの管理・運営のために、ユーザーの位置情報を閲覧できる権限を有しています。</p>
                 <p style="margin-bottom: 15px;">位置情報は暗号化などの技術的保護措置を講じていますが、管理者が他の情報と照らし合わせることで、実際の位置を特定できる可能性があります。</p>
+                <p style="margin-bottom: 15px; padding: 12px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 5px; color: #2e7d32; font-weight: bold;">
+                    ✅ 管理者による位置情報の使用について<br>
+                    管理者は、位置情報を私利私欲のために使用することはありません。位置情報は、あくまで本アプリの正常な動作を維持し、ユーザーが予定の目的地に到着したかを判定する目的でのみ使用されます。
+                </p>
                 
                 <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">3. 位置情報の利用目的</h3>
                 <ul style="margin-bottom: 15px; padding-left: 20px;">
@@ -171,12 +175,30 @@
                     位置情報の提供は任意です。ただし、位置情報を提供いただけない場合、本アプリの主要機能（予定の到着判定）をご利用いただけません。
                 </p>
             </div>
-            <div style="display: flex; gap: 10px; justify-content: center;">
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
                 <button id="consentRejectBtn" style="background: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;">同意しない</button>
                 <button id="consentAcceptBtn" style="background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;">同意する</button>
             </div>
         </div>
     </div>
+    <style>
+        @media (max-width: 480px) {
+            #locationConsentModalContent {
+                margin: 10px auto !important;
+                padding: 20px !important;
+                padding-bottom: 120px !important;
+                max-width: 95% !important;
+            }
+            #locationConsentText {
+                max-height: none !important;
+                overflow-y: visible !important;
+            }
+            #locationConsentModal {
+                height: 100vh;
+                height: -webkit-fill-available;
+            }
+        }
+    </style>
 
     <script>
         function isSessionStorageAvailable() {
