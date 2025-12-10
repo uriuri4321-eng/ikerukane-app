@@ -416,40 +416,45 @@
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
-      border-bottom: 2px solid #e9ecef;
-      background: #ffffff !important;
-      padding: 10px !important;
-      border-radius: 8px !important;
+      border-bottom: none;
+      background: transparent !important;
+      padding: 0 !important;
       margin-top: 10px;
     }
     
     .tab-container {
-      background: #ffffff !important;
-      padding: 10px !important;
-      border-radius: 8px !important;
+      background: transparent !important;
+      padding: 0 !important;
       margin-top: 10px;
     }
     
     .tab-button {
       flex: 1;
       padding: 12px 20px;
-      background: transparent;
-      border: none;
-      border-bottom: 3px solid transparent;
+      background: linear-gradient(45deg, #4CAF50, #45a049) !important;
+      border: none !important;
+      border-bottom: none !important;
       font-size: 16px;
       font-weight: bold;
-      color: #666;
+      color: white !important;
       cursor: pointer;
       transition: all 0.3s;
+      border-radius: 25px;
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
     }
     
     .tab-button.active {
-      color: #4CAF50;
-      border-bottom-color: #4CAF50;
+      background: linear-gradient(45deg, #4CAF50, #45a049) !important;
+      color: white !important;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      transform: translateY(-2px);
     }
     
     .tab-button:hover {
-      color: #4CAF50;
+      background: linear-gradient(45deg, #45a049, #4CAF50) !important;
+      color: white !important;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     }
     
     .tab-content {
