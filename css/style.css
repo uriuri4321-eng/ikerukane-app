@@ -979,6 +979,14 @@ button {
         max-width: 600px;
         padding: 0 24px;
     }
+
+    .main-title {
+        top: 120px;
+    }
+
+    .catch {
+        top: 260px;
+    }
 }
 
 /* デスクトップ */
