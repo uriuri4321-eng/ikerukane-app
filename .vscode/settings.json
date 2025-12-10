@@ -2,5 +2,8 @@
     "liveServer.settings.port": 5503,
     "liveServer.settings.host": "localhost",
     "liveServer.settings.customBrowser": null,
-    "liveServer.settings.ignoreFiles": []
+    "liveServer.settings.ignoreFiles": [],
+    "git.enableSmartCommit": true,
+    "git.confirmSync": false,
+    "git.autofetch": true
 }

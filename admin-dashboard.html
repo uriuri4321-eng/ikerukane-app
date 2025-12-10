@@ -16,7 +16,35 @@
     <script src="js/firebase-config.js"></script>
     <style>
         body {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            margin-left: 0 !important;
+            transform: none !important;
             background-color: #f5f5f5;
+        }
+        
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 16px;
+            }
+            
+            .stats-summary {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+            }
+            
+            .account-card {
+                padding: 16px;
+            }
         }
         
         .admin-header {
