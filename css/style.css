@@ -45,11 +45,10 @@ html {
 
 body {
     width: 100%;
-    max-width: 430px;
     min-height: 100vh;
     /* iOS Safari 100vh問題への対応 */
     min-height: -webkit-fill-available;
-    margin: 0 auto;
+    margin: 0;
     background-color: var(--bg-white);
     position: relative;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
@@ -326,6 +325,11 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
     margin-top: 60px;
     padding: 0 20px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .calendar-container h2 {
@@ -478,12 +482,20 @@ label {
     background: var(--bg-white);
     border-radius: var(--radius-md);
     padding: 32px;
-    max-width: 500px;
-    width: 90%;
+    max-width: 100%;
+    width: 100%;
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: var(--shadow-xl);
     animation: slideUp var(--transition-normal);
+    box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+    .modal-content {
+        max-width: 500px;
+        width: 90%;
+    }
 }
 
 @keyframes slideUp {
@@ -563,7 +575,8 @@ button {
 }
 
 #loginSection .login-content {
-    max-width: 400px;
+    max-width: 100%;
+    width: 100%;
     margin: 50px auto;
     padding: 32px;
     background: var(--bg-white);
@@ -572,6 +585,13 @@ button {
     position: relative;
     z-index: 1001;
     animation: slideUp var(--transition-normal);
+    box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+    #loginSection .login-content {
+        max-width: 400px;
+    }
 }
 
 #closeLoginSection {
@@ -781,7 +801,9 @@ button {
     flex-direction: column;
     gap: 16px;
     width: 200px;
+    max-width: calc(100% - 32px);
     align-items: center;
+    box-sizing: border-box;
 }
 
 #showLoginButton,
@@ -807,7 +829,8 @@ button {
 }
 
 #locationConsentModalContent {
-    max-width: 500px;
+    max-width: 100%;
+    width: 100%;
     margin: 20px auto;
     padding: 32px;
     padding-bottom: 300px;
@@ -815,6 +838,13 @@ button {
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-xl);
     position: relative;
+    box-sizing: border-box;
+}
+
+@media (min-width: 480px) {
+    #locationConsentModalContent {
+        max-width: 500px;
+    }
 }
 
 #locationConsentModalContent h2 {
@@ -914,17 +944,28 @@ button {
 .shadow-lg { box-shadow: var(--shadow-lg); }
 
 /* ===== レスポンシブデザイン ===== */
+/* コンテンツを中央揃えにするためのコンテナ */
+.main-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 0 16px;
+    box-sizing: border-box;
+}
+
 /* タブレット以上 */
 @media (min-width: 768px) {
-    body {
+    .main-container {
         max-width: 600px;
+        padding: 0 24px;
     }
 }
 
 /* デスクトップ */
 @media (min-width: 1024px) {
-    body {
+    .main-container {
         max-width: 800px;
+        padding: 0 32px;
     }
 }
 
@@ -932,7 +973,6 @@ button {
 @media (max-width: 480px) {
     body {
         width: 100%;
-        max-width: 100%;
         padding-left: 12px;
         padding-right: 12px;
     }
@@ -968,8 +1008,16 @@ button {
     
     .login-content {
         max-width: 95%;
+        width: 95%;
         padding: 24px;
         margin: 20px auto;
+    }
+    
+    #locationConsentModalContent {
+        max-width: 95%;
+        width: 95%;
+        padding: 24px;
+        margin: 10px auto;
     }
     
     .register-container {
