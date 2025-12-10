@@ -20,10 +20,19 @@
         .register-container {
             max-width: 400px;
             margin: 50px auto;
-            padding: 30px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 32px;
+            background: var(--bg-white);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-xl);
+            animation: slideUp var(--transition-normal);
+        }
+        
+        .register-container h2 {
+            text-align: center;
+            margin-bottom: 32px;
+            color: var(--text-primary);
+            font-size: 28px;
+            font-weight: 700;
         }
         
         .register-form {
@@ -32,61 +41,45 @@
             gap: 20px;
         }
         
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .form-group label {
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .form-group input {
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        
-        .form-group input:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
-        
         .register-btn {
-            background: linear-gradient(45deg, #4CAF50, #45a049);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
             color: white;
-            padding: 15px 30px;
+            padding: 16px 32px;
             border: none;
-            border-radius: 25px;
+            border-radius: var(--radius-xl);
             font-size: 18px;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
-            transition: transform 0.2s;
+            transition: all var(--transition-normal);
             margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
         }
         
         .register-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+        
+        .register-btn:active {
+            transform: translateY(0);
         }
         
         .back-link {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 24px;
         }
         
         .back-link a {
-            color: #666;
+            color: var(--secondary-color);
             text-decoration: none;
             font-size: 14px;
+            font-weight: 600;
+            transition: all var(--transition-fast);
         }
         
         .back-link a:hover {
-            color: #4CAF50;
+            color: var(--secondary-dark);
+            text-decoration: underline;
         }
         
         @keyframes spin {
@@ -97,6 +90,32 @@
         #googleSignUpBtn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
+        }
+        
+        .register-divider {
+            text-align: center;
+            margin: 24px 0;
+            color: var(--text-secondary);
+            font-size: 14px;
+            position: relative;
+        }
+        
+        .register-divider::before,
+        .register-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: var(--border-color);
+        }
+        
+        .register-divider::before {
+            left: 0;
+        }
+        
+        .register-divider::after {
+            right: 0;
         }
     </style>
 </head>
@@ -109,7 +128,7 @@
         
         <!-- Googleアカウントで登録 -->
         <div id="googleSignUpButton" style="margin-bottom: 20px; text-align: center;"></div>
-        <div style="text-align: center; margin: 20px 0; color: #666; font-size: 14px;">または</div>
+        <div class="register-divider">または</div>
         
         <form class="register-form" id="registerForm">
             <div class="form-group">
@@ -260,7 +279,8 @@
             // ボタン要素を直接作成して追加
             const button = document.createElement('button');
             button.id = 'googleSignUpBtn';
-            button.style.cssText = 'width: 100%; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;';
+            button.className = 'google-signup-btn';
+            button.style.cssText = 'width: 100%; padding: 14px; background: white; border: 2px solid var(--border-color); border-radius: var(--radius-sm); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all var(--transition-normal); box-shadow: var(--shadow-sm); color: var(--text-primary);';
             button.innerHTML = `
                 <svg width="20" height="20" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>

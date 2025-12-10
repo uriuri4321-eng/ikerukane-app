@@ -27,78 +27,76 @@
     <img src="images/cloud1.png" class="cloud1">
     <img src="images/cloud2.png" class="cloud2">
 
-    <div id="loginSection" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; overflow-y: auto;">
-        <div style="max-width: 400px; margin: 50px auto; padding: 30px; background: white; border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); position: relative; z-index: 1001;">
-            <button id="closeLoginSection" style="position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; z-index: 1002;">×</button>
-            <h2 style="text-align: center; margin-bottom: 30px; color: #333;">🔐 ログイン</h2>
+    <div id="loginSection">
+        <div class="login-content">
+            <button id="closeLoginSection">×</button>
+            <h2>🔐 ログイン</h2>
             
             <!-- Googleアカウントでログイン -->
-            <div id="googleSignInButton" style="margin-bottom: 20px; text-align: center;"></div>
-            <div style="text-align: center; margin: 20px 0; color: #666; font-size: 14px;">または</div>
+            <div id="googleSignInButton"></div>
+            <div class="login-divider">または</div>
             
             <!-- メール/パスワードログイン -->
-            <form id="loginForm" style="display: flex; flex-direction: column; gap: 20px;">
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="loginEmail" style="font-weight: bold; color: #333;">メールアドレス</label>
-                    <input type="email" id="loginEmail" required style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">メールアドレス</label>
+                    <input type="email" id="loginEmail" required>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="loginPassword" style="font-weight: bold; color: #333;">パスワード</label>
-                    <input type="password" id="loginPassword" required style="padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;">
+                <div class="form-group">
+                    <label for="loginPassword">パスワード</label>
+                    <input type="password" id="loginPassword" required>
                 </div>
-                <button type="submit" style="background: linear-gradient(45deg, #4CAF50, #45a049); color: white; padding: 15px 30px; border: none; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px;">
-                    ログイン
-                </button>
+                <button type="submit" class="login-submit-btn">ログイン</button>
             </form>
-            <div style="text-align: center; margin-top: 20px;">
-                <a href="#" id="showRegisterLink" style="color: #666; text-decoration: none; font-size: 14px;">アカウント登録はこちら</a>
+            <div class="register-link">
+                <a href="#" id="showRegisterLink">アカウント登録はこちら</a>
             </div>
         </div>
     </div>
     
-    <div style="text-align: center; position: absolute; bottom: 80px; left: 50%; transform: translate(-50%); z-index: 30; display: flex; flex-direction: column; gap: 15px; width: 200px; align-items: center;">
-        <button id="showLoginButton" style="text-decoration: none; background-color: slategrey; color: white; padding: 10px; border-radius: 10px; border: none; cursor: pointer; width: 200px; font-size: 16px; position: static; transform: none; margin: 0; box-sizing: border-box;">ログイン</button>
-        <a href="register.html" id="registerLink" style="text-decoration: none; background-color: slategrey; color: white; padding: 10px; border-radius: 10px; width: 200px; text-align: center; display: block; position: static; transform: none; margin: 0; font-size: 16px; box-sizing: border-box;">アカウント登録</a>
+    <div class="login-buttons-area">
+        <button id="showLoginButton">ログイン</button>
+        <a href="register.html" id="registerLink">アカウント登録</a>
     </div>
     
     <div id="map"></div>
     
     <!-- 位置情報の取り扱いに関する同意モーダル -->
-    <div id="locationConsentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 2000; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;">
-        <div id="locationConsentModalContent" style="max-width: 500px; margin: 20px auto; padding: 30px; padding-bottom: 300px; background: white; border-radius: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3); position: relative;">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #333; font-size: 20px;">📍 位置情報の取り扱いに関する同意</h2>
-            <div id="locationConsentText" style="padding: 20px; background: #f8f9fa; border-radius: 10px; margin-bottom: 20px; line-height: 1.8; color: #333;">
-                <p style="margin-bottom: 15px; font-weight: bold; color: #dc3545;">重要：本アプリを使用する前に、以下の内容を必ずお読みください。</p>
+    <div id="locationConsentModal">
+        <div id="locationConsentModalContent">
+            <h2>📍 位置情報の取り扱いに関する同意</h2>
+            <div id="locationConsentText">
+                <p style="margin-bottom: 15px; font-weight: bold; color: var(--danger-color);">重要：本アプリを使用する前に、以下の内容を必ずお読みください。</p>
                 
-                <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">1. 位置情報の収集について</h3>
-                <p style="margin-bottom: 15px;">本アプリは、予定の目的地への到着を確認するために、お客様の位置情報（GPS情報）を収集・利用します。位置情報は、予定の期日までに目的地に到着したかどうかを自動判定するために使用されます。</p>
+                <h3>1. 位置情報の収集について</h3>
+                <p>本アプリは、予定の目的地への到着を確認するために、お客様の位置情報（GPS情報）を収集・利用します。位置情報は、予定の期日までに目的地に到着したかどうかを自動判定するために使用されます。</p>
                 
-                <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">2. 管理者による位置情報の閲覧について</h3>
-                <p style="margin-bottom: 15px; color: #dc3545; font-weight: bold;">本アプリの管理者は、システムの管理・運営のために、ユーザーの位置情報を閲覧できる権限を有しています。</p>
-                <p style="margin-bottom: 15px;">位置情報は暗号化などの技術的保護措置を講じていますが、管理者が他の情報と照らし合わせることで、実際の位置を特定できる可能性があります。</p>
-                <p style="margin-bottom: 15px; padding: 12px; background: #e8f5e9; border-left: 4px solid #4CAF50; border-radius: 5px; color: #2e7d32; font-weight: bold;">
+                <h3>2. 管理者による位置情報の閲覧について</h3>
+                <p style="color: var(--danger-color); font-weight: bold;">本アプリの管理者は、システムの管理・運営のために、ユーザーの位置情報を閲覧できる権限を有しています。</p>
+                <p>位置情報は暗号化などの技術的保護措置を講じていますが、管理者が他の情報と照らし合わせることで、実際の位置を特定できる可能性があります。</p>
+                <p style="padding: 16px; background: #e8f5e9; border-left: 4px solid var(--primary-color); border-radius: var(--radius-sm); color: #2e7d32; font-weight: bold;">
                     ✅ 管理者による位置情報の使用について<br>
                     管理者は、位置情報を私利私欲のために使用することはありません。位置情報は、あくまで本アプリの正常な動作を維持し、ユーザーが予定の目的地に到着したかを判定する目的でのみ使用されます。
                 </p>
                 
-                <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">3. 位置情報の利用目的</h3>
+                <h3>3. 位置情報の利用目的</h3>
                 <ul style="margin-bottom: 15px; padding-left: 20px;">
                     <li>予定の目的地への到着判定</li>
                     <li>システムの管理・運営</li>
                     <li>統計データの作成（個人を特定できない形で）</li>
                 </ul>
                 
-                <h3 style="color: #333; font-size: 16px; margin-top: 20px; margin-bottom: 10px;">4. 同意について</h3>
-                <p style="margin-bottom: 15px;">本アプリを使用するには、上記の位置情報の取り扱いについて同意していただく必要があります。同意いただけない場合、本アプリをご利用いただけません。</p>
+                <h3>4. 同意について</h3>
+                <p>本アプリを使用するには、上記の位置情報の取り扱いについて同意していただく必要があります。同意いただけない場合、本アプリをご利用いただけません。</p>
                 
-                <p style="margin-top: 20px; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 5px; color: #856404;">
+                <p style="margin-top: 20px; padding: 16px; background: #fff3cd; border-left: 4px solid var(--warning-color); border-radius: var(--radius-sm); color: #856404;">
                     <strong>⚠️ 注意事項</strong><br>
                     位置情報の提供は任意です。ただし、位置情報を提供いただけない場合、本アプリの主要機能（予定の到着判定）をご利用いただけません。
                 </p>
             </div>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
-                <button id="consentRejectBtn" style="background: #dc3545; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;">同意しない</button>
-                <button id="consentAcceptBtn" style="background: #4CAF50; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; flex: 1;">同意する</button>
+            <div class="consent-buttons">
+                <button id="consentRejectBtn">同意しない</button>
+                <button id="consentAcceptBtn">同意する</button>
             </div>
         </div>
     </div>
@@ -479,7 +477,7 @@
             
             // Google Sign-Inボタンを作成
             googleSignInButton.innerHTML = `
-                <button id="googleLoginBtn" style="width: 100%; padding: 12px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <button id="googleLoginBtn">
                     <svg width="20" height="20" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                         <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
