@@ -13,6 +13,10 @@
     :root {
       --bg-gradient-start: #667eea;
       --bg-gradient-end: #764ba2;
+      --bg-white: #ffffff;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
     }
     
     html {
@@ -55,6 +59,11 @@
     .header-section {
       text-align: center;
       margin-bottom: 30px;
+      background: var(--bg-white);
+      padding: 20px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      margin-top: 20px;
     }
     
     .reserve-button {
@@ -408,6 +417,10 @@
       gap: 10px;
       margin-bottom: 20px;
       border-bottom: 2px solid #e9ecef;
+      background: var(--bg-white);
+      padding: 10px;
+      border-radius: var(--radius-sm);
+      margin-top: 10px;
     }
     
     .tab-button {
