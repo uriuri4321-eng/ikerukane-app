@@ -17,11 +17,24 @@
     <!-- Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
+        /* CSS変数の定義 */
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+        }
+        
+        html {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            background-attachment: fixed;
+        }
+        
         /* レスポンシブ対応 */
         body {
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
+            background-color: transparent !important;
+            background: transparent !important;
         }
         
         .register-container {
