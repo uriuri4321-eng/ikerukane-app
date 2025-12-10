@@ -14,20 +14,100 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="js/firebase-config.js?v=20250219"></script>
     <style>
+        /* CSS変数の定義（style.cssから） */
+        :root {
+            --primary-color: #4CAF50;
+            --primary-dark: #45a049;
+            --primary-light: #81C784;
+            --danger-color: #dc3545;
+            --danger-dark: #c82333;
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --bg-white: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+            --shadow-xl: 0 12px 32px rgba(0,0,0,0.25);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 25px;
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s ease;
+        }
+        
         html {
             background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             background-attachment: fixed;
             position: relative;
             min-height: 100vh;
+            height: 100%;
+            height: -webkit-fill-available;
         }
         
-        body {
-            min-height: 100vh;
-            padding-bottom: 20px;
-            background: transparent !important;
+        /* style.cssのbodyスタイルを完全に上書き */
+        body.map-page {
             width: 100% !important;
+            max-width: 100% !important;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            margin: 0 !important;
             margin-left: 0 !important;
             transform: none !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            padding: 16px !important;
+            padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+            padding-bottom: calc(env(safe-area-inset-bottom) + 20px) !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            box-sizing: border-box !important;
+            position: relative !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+        
+        html body.map-page {
+            background: transparent !important;
+        }
+        
+        /* 共通スタイル（style.cssから必要な部分のみ） */
+        * {
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        a, button {
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+        
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+        
+        button {
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="number"],
+        input[type="datetime-local"],
+        input[type="date"],
+        input[type="time"],
+        textarea,
+        select {
+            font-size: 16px !important;
+            -webkit-appearance: none;
+            appearance: none;
+            touch-action: manipulation;
         }
         
         .map-container {
@@ -295,7 +375,7 @@
     </style>
 </head>
 
-<body onload="init(); displayEventInfo();">
+<body class="map-page" onload="init(); displayEventInfo();">
 
     <div class="map-container">
         <p class="mapclose"><a href="calendar.html">×</a></p>
