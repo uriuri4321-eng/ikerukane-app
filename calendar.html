@@ -67,21 +67,25 @@
     }
     
     .reserve-button {
-      background: linear-gradient(45deg, #4CAF50, #45a049);
-      color: white;
-      padding: 15px 30px;
-      border: none;
-      border-radius: 25px;
-      font-size: 18px;
-      font-weight: bold;
+      background: linear-gradient(45deg, #4CAF50, #45a049) !important;
+      color: white !important;
+      padding: 18px 36px !important;
+      border: none !important;
+      border-radius: 25px !important;
+      font-size: 20px !important;
+      font-weight: bold !important;
       cursor: pointer;
-      transition: transform 0.2s;
+      transition: all 0.3s;
       margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
     
     .reserve-button:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+      box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
     }
     
     .event-form {
@@ -430,23 +434,27 @@
     
     .tab-button {
       flex: 1;
-      padding: 12px 20px;
+      padding: 14px 24px !important;
       background: linear-gradient(45deg, #4CAF50, #45a049) !important;
       border: none !important;
       border-bottom: none !important;
-      font-size: 16px;
-      font-weight: bold;
+      font-size: 16px !important;
+      font-weight: bold !important;
       color: white !important;
       cursor: pointer;
       transition: all 0.3s;
-      border-radius: 25px;
-      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+      border-radius: 25px !important;
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .tab-button.active {
       background: linear-gradient(45deg, #4CAF50, #45a049) !important;
       color: white !important;
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
       transform: translateY(-2px);
     }
     
@@ -454,7 +462,15 @@
       background: linear-gradient(45deg, #45a049, #4CAF50) !important;
       color: white !important;
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
+    }
+    
+    .tab-button:not(.active) {
+      opacity: 0.9;
+    }
+    
+    .tab-button:not(.active):hover {
+      opacity: 1;
     }
     
     .tab-content {

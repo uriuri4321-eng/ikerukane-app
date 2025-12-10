@@ -33,12 +33,20 @@
         }
         
         #map {
-            height: 60vh;
+            height: 70vh;
+            min-height: 500px;
             width: 100%;
             margin-bottom: 24px;
             border-radius: var(--radius-md);
             box-shadow: var(--shadow-md);
             overflow: hidden;
+        }
+        
+        @media (min-height: 800px) {
+            #map {
+                height: 75vh;
+                min-height: 600px;
+            }
         }
         
         .info-container {
