@@ -87,12 +87,15 @@ h1, h2, h3, h4, h5, h6 {
     transform: translate(-50%);
     z-index: 30;
     font-size: 56px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    color: #ffffff;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
     animation: fadeInDown 0.8s ease;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 20px 40px;
+    border-radius: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes fadeInDown {
@@ -107,18 +110,27 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .catch {
-    font-size: 22px;
+    font-family: "Nico Moji", sans-serif;
+    font-size: 24px;
     text-align: center;
     position: absolute;
-    top: 280px;
+    top: 320px;
     left: 50%;
     right: -50%;
     transform: translate(-50%);
     z-index: 30;
-    color: var(--text-primary);
-    font-weight: 500;
-    letter-spacing: 0.5px;
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: 1px;
     animation: fadeInUp 0.8s ease 0.2s both;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    padding: 16px 32px;
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    line-height: 1.6;
 }
 
 @keyframes fadeInUp {
@@ -995,11 +1007,13 @@ button {
     .main-title {
         font-size: 42px;
         top: 150px;
+        padding: 16px 28px;
     }
 
     .catch {
-        font-size: 18px;
-        top: 240px;
+        font-size: 20px;
+        top: 260px;
+        padding: 12px 24px;
     }
 
     .modal-content {
