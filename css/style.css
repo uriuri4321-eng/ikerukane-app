@@ -35,12 +35,13 @@
 }
 
 html {
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-    background-attachment: fixed;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%) !important;
+    background-attachment: fixed !important;
     position: relative;
     /* iOS Safari 100vh問題への対応 */
     height: 100%;
     height: -webkit-fill-available;
+    min-height: 100vh;
 }
 
 body {

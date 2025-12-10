@@ -9,9 +9,16 @@
     <title>イケルカネ 検知</title>
     <link rel="stylesheet" href="./css/style.css">
     <style>
+        /* CSS変数の定義（最初に定義） */
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+        }
+        
         html {
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
-            background-attachment: fixed;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%) !important;
+            background-attachment: fixed !important;
+            min-height: 100vh;
         }
         
         /* style.cssのbodyスタイルを上書き */
@@ -23,12 +30,6 @@
             transform: none !important;
             background: transparent !important;
             background-color: transparent !important;
-        }
-        
-        /* CSS変数の定義（未定義の場合） */
-        :root {
-            --bg-gradient-start: #667eea;
-            --bg-gradient-end: #764ba2;
         }
         
         #map {
