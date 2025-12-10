@@ -61,6 +61,25 @@
     
     <div id="map"></div>
     
+    <!-- 管理者選択モーダル -->
+    <div id="adminChoiceModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); z-index: 1500; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch;">
+        <div id="adminChoiceModalContent" style="max-width: 400px; margin: 50px auto; padding: 32px; background: var(--bg-white); border-radius: var(--radius-md); box-shadow: var(--shadow-xl); position: relative; box-sizing: border-box;">
+            <h2 style="text-align: center; margin-bottom: 24px; color: var(--text-primary); font-size: 24px; font-weight: 700;">🔐 管理者ログイン</h2>
+            <p style="text-align: center; margin-bottom: 32px; color: var(--text-secondary); line-height: 1.6;">
+                管理者としてログインしました。<br>
+                どちらに移動しますか？
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <button id="goToAdminDashboardBtn" style="background: linear-gradient(135deg, var(--danger-color) 0%, var(--danger-dark) 100%); color: white; padding: 16px 32px; border: none; border-radius: var(--radius-md); font-size: 18px; font-weight: 700; cursor: pointer; transition: all var(--transition-normal); box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);">
+                    📊 管理用ダッシュボード
+                </button>
+                <button id="goToCalendarBtn" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%); color: white; padding: 16px 32px; border: none; border-radius: var(--radius-md); font-size: 18px; font-weight: 700; cursor: pointer; transition: all var(--transition-normal); box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);">
+                    📅 予定設定画面
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- 位置情報の取り扱いに関する同意モーダル -->
     <div id="locationConsentModal">
         <div id="locationConsentModalContent">
@@ -159,6 +178,38 @@
             );
         }
 
+        // 管理者選択モーダルを表示する関数
+        function showAdminChoiceModal() {
+            const modal = document.getElementById('adminChoiceModal');
+            if (!modal) return;
+            
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden';
+            
+            // 管理用ダッシュボードボタン
+            const adminBtn = document.getElementById('goToAdminDashboardBtn');
+            if (adminBtn) {
+                adminBtn.onclick = function() {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                    document.documentElement.style.overflow = '';
+                    window.location.href = 'admin-dashboard.html';
+                };
+            }
+            
+            // 予定設定画面ボタン
+            const calendarBtn = document.getElementById('goToCalendarBtn');
+            if (calendarBtn) {
+                calendarBtn.onclick = function() {
+                    modal.style.display = 'none';
+                    document.body.style.overflow = '';
+                    document.documentElement.style.overflow = '';
+                    window.location.href = 'calendar.html';
+                };
+            }
+        }
+        
         // 位置情報の取り扱いに関する同意チェック
         let consentModalInitialized = false;
         function checkLocationConsent() {
@@ -194,7 +245,14 @@
                             const isLoggedIn = localStorage.getItem('isLoggedIn');
                             const userId = localStorage.getItem('currentUserId');
                             if (isLoggedIn === 'true' && userId) {
-                                window.location.href = 'calendar.html';
+                                // ユーザー情報を取得して管理者かチェック
+                                const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+                                if (userAccount.email === 'uriuri4321@gmail.com') {
+                                    // 管理者の場合は選択画面を表示
+                                    showAdminChoiceModal();
+                                } else {
+                                    window.location.href = 'calendar.html';
+                                }
                             }
                         });
                         
@@ -253,9 +311,9 @@
                                     localStorage.setItem('isLoggedIn', 'true');
                                     localStorage.setItem('userAccount', JSON.stringify(userData));
                                     
-                                    // 管理者メールアドレスの場合は管理ページに遷移
+                                    // 管理者メールアドレスの場合は選択画面を表示
                                     if (userData.email === 'uriuri4321@gmail.com') {
-                                        window.location.href = 'admin-dashboard.html';
+                                        showAdminChoiceModal();
                                     } else {
                                         window.location.href = 'calendar.html';
                                     }
@@ -369,9 +427,9 @@
                                     return; // 同意するまで待機
                                 }
                                 
-                                // 管理者メールアドレスの場合は管理ページに遷移
+                                // 管理者メールアドレスの場合は選択画面を表示
                                 if (userData.email === 'uriuri4321@gmail.com') {
-                                    window.location.href = 'admin-dashboard.html';
+                                    showAdminChoiceModal();
                                 } else {
                                     window.location.href = 'calendar.html';
                                 }
@@ -418,9 +476,9 @@
                             return; // 同意するまで待機
                         }
                         
-                        // 管理者メールアドレスの場合は管理ページに遷移
+                        // 管理者メールアドレスの場合は選択画面を表示
                         if (user.email === 'uriuri4321@gmail.com') {
-                            window.location.href = 'admin-dashboard.html';
+                            showAdminChoiceModal();
                         } else {
                             window.location.href = 'calendar.html';
                         }
@@ -539,9 +597,9 @@
                                 return; // 同意するまで待機
                             }
                             
-                            // 管理者メールアドレスの場合は管理ページに遷移
+                            // 管理者メールアドレスの場合は選択画面を表示
                             if (userData && userData.email === 'uriuri4321@gmail.com') {
-                                window.location.href = 'admin-dashboard.html';
+                                showAdminChoiceModal();
                             } else {
                                 window.location.href = 'calendar.html';
                             }
@@ -667,9 +725,9 @@
                                 return; // 同意するまで待機
                             }
                             
-                            // 管理者メールアドレスの場合は管理ページに遷移
+                            // 管理者メールアドレスの場合は選択画面を表示
                             if (userData && userData.email === 'uriuri4321@gmail.com') {
-                                window.location.href = 'admin-dashboard.html';
+                                showAdminChoiceModal();
                             } else {
                                 window.location.href = 'calendar.html';
                             }
