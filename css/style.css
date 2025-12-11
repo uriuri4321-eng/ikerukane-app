@@ -823,8 +823,9 @@ button {
 /* ログインボタンエリア */
 .login-buttons-area {
     text-align: center;
-    position: absolute;
-    bottom: 60px;
+    position: relative;
+    margin-top: 320px;
+    margin-bottom: 40px;
     left: 50%;
     transform: translate(-50%);
     z-index: 30;
@@ -835,6 +836,37 @@ button {
     max-width: calc(100% - 32px);
     align-items: center;
     box-sizing: border-box;
+}
+
+@media (max-height: 700px) {
+    .login-buttons-area {
+        margin-top: 280px;
+    }
+}
+
+@media (max-height: 600px) {
+    .login-buttons-area {
+        margin-top: 240px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-buttons-area {
+        margin-top: 220px;
+        margin-bottom: 30px;
+    }
+    
+    @media (max-height: 700px) {
+        .login-buttons-area {
+            margin-top: 200px;
+        }
+    }
+    
+    @media (max-height: 600px) {
+        .login-buttons-area {
+            margin-top: 180px;
+        }
+    }
 }
 
 #startButton {
