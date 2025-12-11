@@ -163,6 +163,7 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 25;
     left: -70px;
     top: 20px;
+    animation: float 20s ease-in-out infinite;
     animation-delay: 0s;
 }
 
@@ -170,6 +171,7 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 20;
     right: -70px;
     top: 0px;
+    animation: float2 20s ease-in-out infinite;
     animation-delay: 10s;
 }
 
@@ -178,7 +180,16 @@ h1, h2, h3, h4, h5, h6 {
         transform: translateY(0) translateX(0);
     }
     50% {
-        transform: translateY(-20px) translateX(10px);
+        transform: translateY(-40px) translateX(30px);
+    }
+}
+
+@keyframes float2 {
+    0%, 100% {
+        transform: translateY(0) translateX(0);
+    }
+    50% {
+        transform: translateY(-35px) translateX(-25px);
     }
 }
 
