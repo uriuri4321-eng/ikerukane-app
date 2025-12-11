@@ -219,7 +219,21 @@ function updateBackgroundGradient(timePeriod, weatherCondition = 'clear') {
             --bg-gradient-start: ${colors.start} !important;
             --bg-gradient-end: ${colors.end} !important;
         }
+        /* ログインボタンとアカウント登録ボタンの色を時間帯に合わせる */
+        #showLoginButton, #registerLink {
+            background: linear-gradient(135deg, ${colors.start} 0%, ${colors.end} 100%) !important;
+        }
     `;
+    
+    // ボタンの色も直接更新（確実に適用されるように）
+    const loginButton = document.getElementById('showLoginButton');
+    const registerLink = document.getElementById('registerLink');
+    if (loginButton) {
+        loginButton.style.background = `linear-gradient(135deg, ${colors.start} 0%, ${colors.end} 100%)`;
+    }
+    if (registerLink) {
+        registerLink.style.background = `linear-gradient(135deg, ${colors.start} 0%, ${colors.end} 100%)`;
+    }
 }
 
 /**
