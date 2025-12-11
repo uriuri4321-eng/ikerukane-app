@@ -429,6 +429,15 @@
       background: #1976D2;
     }
     
+    .menu-action-btn.back-to-title {
+      background: #FF9800;
+      color: white;
+    }
+    
+    .menu-action-btn.back-to-title:hover {
+      background: #F57C00;
+    }
+    
     /* タブスタイル */
     .tab-container {
       margin-bottom: 20px;
@@ -791,14 +800,17 @@
                 <text x="350" y="58" font-family="Arial, sans-serif" font-size="24" text-anchor="middle">📅</text>
               </svg>
             </div>
-            <h3>1️⃣ 予定の設定方法</h3>
-            <div class="help-step">
-              <p><strong>ステップ1:</strong> 「予定設定」ボタンをクリックします</p>
-              <p><strong>ステップ2:</strong> 予定タイトル（例：会議、打ち合わせ）を入力します</p>
-              <p><strong>ステップ3:</strong> 期日（日時）を設定します</p>
-              <p><strong>ステップ4:</strong> 「履歴に保存する」にチェックを入れると、次回以降の予定設定で再利用できます</p>
-              <p><strong>ステップ5:</strong> 「設定」ボタンをクリックします</p>
-            </div>
+          <h3>1️⃣ 予定の設定方法</h3>
+          <div class="help-step">
+            <p><strong>ステップ1:</strong> 「予定設定」ボタンをクリックします</p>
+            <p><strong>ステップ2:</strong> 予定タイトル（例：会議、打ち合わせ）を入力します</p>
+            <p><strong>ステップ3:</strong> 期日（日時）を設定します</p>
+            <p><strong>ステップ4:</strong> 「履歴に保存する」にチェックを入れると、次回以降の予定設定で再利用できます</p>
+            <p><strong>ステップ5:</strong> 「設定」ボタンをクリックします</p>
+            <p style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #FF9800; border-radius: 6px; color: #856404; font-weight: bold;">
+              ⚠️ 注意: 予定の終了時間が1時間半を切ると、予定を削除できなくなります。削除が必要な場合は、早めに削除してください。
+            </p>
+          </div>
           </div>
           
           <!-- スライド3: 目的地の設定方法 -->
@@ -1031,6 +1043,7 @@
         <h4>⚙️ 操作</h4>
         <button class="menu-action-btn view-completed" onclick="viewCompletedEvents()">✅ 終了した予定一覧を見る</button>
         <button class="menu-action-btn account-settings" onclick="showAccountSettings()">👤 アカウント設定</button>
+        <button class="menu-action-btn back-to-title" onclick="goToTitlePage()">🏠 タイトルへ戻る</button>
         <button class="menu-action-btn logout" onclick="logout()">🚪 ログアウト</button>
       </div>
     </div>
@@ -1521,6 +1534,13 @@
         const modal = document.getElementById('completedEventsModal');
         if (modal) {
           modal.remove();
+        }
+      };
+      
+      // タイトルページへ戻る
+      window.goToTitlePage = function() {
+        if (confirm('タイトルページに戻りますか？')) {
+          window.location.href = 'index.html';
         }
       };
       
