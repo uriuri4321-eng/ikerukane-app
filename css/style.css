@@ -837,6 +837,51 @@ button {
     box-sizing: border-box;
 }
 
+#startButton {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 14px 28px;
+    border-radius: var(--radius-lg);
+    position: relative;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+}
+
+#startButton:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
+#logoutButton {
+    background: linear-gradient(135deg, var(--danger-color) 0%, var(--danger-dark) 100%);
+    color: white;
+    padding: 14px 28px;
+    border-radius: var(--radius-lg);
+    position: relative;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+    width: 100%;
+    text-align: center;
+    text-decoration: none;
+}
+
+#logoutButton:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+}
+
 #showLoginButton,
 #registerLink {
     width: 100%;

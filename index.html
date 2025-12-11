@@ -56,9 +56,15 @@
         </div>
     </div>
     
-    <div class="login-buttons-area">
+    <div class="login-buttons-area" id="loginButtonsArea">
         <button id="showLoginButton">ログイン</button>
         <a href="register.html" id="registerLink">アカウント登録</a>
+    </div>
+    
+    <!-- ログイン済みの場合のボタンエリア -->
+    <div class="login-buttons-area" id="loggedInButtonsArea" style="display: none;">
+        <button id="startButton">始める</button>
+        <button id="logoutButton">ログアウト</button>
     </div>
     
     <div id="map"></div>
@@ -247,14 +253,8 @@
                             const isLoggedIn = localStorage.getItem('isLoggedIn');
                             const userId = localStorage.getItem('currentUserId');
                             if (isLoggedIn === 'true' && userId) {
-                                // ユーザー情報を取得して管理者かチェック
-                                const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
-                                if (userAccount.email === 'uriuri4321@gmail.com') {
-                                    // 管理者の場合は選択画面を表示
-                                    showAdminChoiceModal();
-                                } else {
-                                    window.location.href = 'calendar.html';
-                                }
+                                // ボタンをログイン済み状態に変更（自動リダイレクトしない）
+                                showLoggedInButtons();
                             }
                         });
                         
@@ -313,12 +313,8 @@
                                     localStorage.setItem('isLoggedIn', 'true');
                                     localStorage.setItem('userAccount', JSON.stringify(userData));
                                     
-                                    // 管理者メールアドレスの場合は選択画面を表示
-                                    if (userData.email === 'uriuri4321@gmail.com') {
-                                        showAdminChoiceModal();
-                                    } else {
-                                        window.location.href = 'calendar.html';
-                                    }
+                                    // ログイン済みの場合はボタンを変更（自動リダイレクトしない）
+                                    showLoggedInButtons();
                                 }
                             });
                     } else {
@@ -332,26 +328,41 @@
             }
             
             function checkLocalStorageLogin() {
-                // 既にログイン済みの場合は自動的にカレンダーページにリダイレクト
+                // 既にログイン済みの場合はボタンを変更
                 if (isLoggedIn === 'true' && currentUserId) {
                     const currentUser = userAccounts.find(acc => acc.id.toString() === currentUserId);
                     if (currentUser) {
                         console.log('ログイン済みユーザー:', currentUser);
-                        // 位置情報の同意をチェック
-                        if (checkLocationConsent()) {
-                            // 登録済みユーザーは自動的にカレンダーへ
-                            window.location.href = 'calendar.html';
-                        }
+                        // ログイン済みの場合はボタンを変更
+                        showLoggedInButtons();
                         return;
                     } else {
                         console.warn('ユーザーが見つかりません');
                         // ユーザーが見つからない場合はログアウト状態に
                         localStorage.removeItem('currentUserId');
                         localStorage.removeItem('isLoggedIn');
+                        showLoginButtons();
                     }
                 } else {
                     console.log('未ログイン状態');
+                    showLoginButtons();
                 }
+            }
+            
+            // ログイン済みのボタンを表示
+            function showLoggedInButtons() {
+                const loginArea = document.getElementById('loginButtonsArea');
+                const loggedInArea = document.getElementById('loggedInButtonsArea');
+                if (loginArea) loginArea.style.display = 'none';
+                if (loggedInArea) loggedInArea.style.display = 'flex';
+            }
+            
+            // ログインボタンを表示
+            function showLoginButtons() {
+                const loginArea = document.getElementById('loginButtonsArea');
+                const loggedInArea = document.getElementById('loggedInButtonsArea');
+                if (loginArea) loginArea.style.display = 'flex';
+                if (loggedInArea) loggedInArea.style.display = 'none';
             }
             
             // ログイン機能のセットアップ
@@ -359,6 +370,53 @@
             
             // Googleアカウントログインのセットアップ
             setupGoogleSignIn();
+            
+            // 「始める」ボタンのセットアップ
+            const startButton = document.getElementById('startButton');
+            if (startButton) {
+                startButton.addEventListener('click', function() {
+                    const userAccount = JSON.parse(localStorage.getItem('userAccount') || '{}');
+                    // 管理者メールアドレスの場合は選択画面を表示
+                    if (userAccount.email === 'uriuri4321@gmail.com') {
+                        showAdminChoiceModal();
+                    } else {
+                        window.location.href = 'calendar.html';
+                    }
+                });
+            }
+            
+            // ログアウトボタンのセットアップ
+            const logoutButton = document.getElementById('logoutButton');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', function() {
+                    if (confirm('ログアウトしますか？\n再度ログインが必要になります。')) {
+                        // Firebase認証からログアウト
+                        if (auth) {
+                            auth.signOut().then(() => {
+                                console.log('Firebaseからログアウトしました');
+                            }).catch((error) => {
+                                console.error('Firebaseログアウトエラー:', error);
+                            });
+                        }
+                        
+                        // localStorageをクリア
+                        localStorage.removeItem('currentUserId');
+                        localStorage.removeItem('isLoggedIn');
+                        localStorage.removeItem('userAccount');
+                        
+                        // 位置情報の同意もクリア（オプション）
+                        // localStorage.removeItem('locationConsent_' + currentUserId);
+                        
+                        alert('ログアウトしました');
+                        
+                        // ボタンをログイン状態に戻す
+                        showLoginButtons();
+                        
+                        // ページをリロード
+                        window.location.reload();
+                    }
+                });
+            }
             
             // register.htmlからリダイレクトされた場合、メールアドレスを自動入力
             const loginEmail = localStorage.getItem('loginEmail');
@@ -421,6 +479,9 @@
                                 
                                 alert('ログインしました！');
                                 
+                                // ボタンをログイン済み状態に変更
+                                showLoggedInButtons();
+                                
                                 // 位置情報の同意をチェック
                                 const consentKey = `locationConsent_${userData.id}`;
                                 if (localStorage.getItem(consentKey) !== 'true') {
@@ -429,12 +490,8 @@
                                     return; // 同意するまで待機
                                 }
                                 
-                                // 管理者メールアドレスの場合は選択画面を表示
-                                if (userData.email === 'uriuri4321@gmail.com') {
-                                    showAdminChoiceModal();
-                                } else {
-                                    window.location.href = 'calendar.html';
-                                }
+                                // 管理者メールアドレスの場合は選択画面を表示（自動リダイレクトしない）
+                                // ユーザーが「始める」ボタンをクリックしたときに表示される
                             } else {
                                 alert('ユーザー情報が見つかりませんでした。');
                             }
@@ -470,6 +527,9 @@
                         
                         alert('ログインしました！');
                         
+                        // ボタンをログイン済み状態に変更
+                        showLoggedInButtons();
+                        
                         // 位置情報の同意をチェック
                         const consentKey = `locationConsent_${user.uid}`;
                         if (localStorage.getItem(consentKey) !== 'true') {
@@ -478,12 +538,8 @@
                             return; // 同意するまで待機
                         }
                         
-                        // 管理者メールアドレスの場合は選択画面を表示
-                        if (user.email === 'uriuri4321@gmail.com') {
-                            showAdminChoiceModal();
-                        } else {
-                            window.location.href = 'calendar.html';
-                        }
+                        // 管理者メールアドレスの場合は選択画面を表示（自動リダイレクトしない）
+                        // ユーザーが「始める」ボタンをクリックしたときに表示される
                     } else {
                         alert('メールアドレスまたはパスワードが正しくありません。');
                     }
@@ -591,6 +647,9 @@
                             
                             alert('ログインしました！');
                             
+                            // ボタンをログイン済み状態に変更
+                            showLoggedInButtons();
+                            
                             // 位置情報の同意をチェック
                             const consentKey = `locationConsent_${user.uid}`;
                             if (localStorage.getItem(consentKey) !== 'true') {
@@ -599,12 +658,8 @@
                                 return; // 同意するまで待機
                             }
                             
-                            // 管理者メールアドレスの場合は選択画面を表示
-                            if (userData && userData.email === 'uriuri4321@gmail.com') {
-                                showAdminChoiceModal();
-                            } else {
-                                window.location.href = 'calendar.html';
-                            }
+                            // 管理者メールアドレスの場合は選択画面を表示（自動リダイレクトしない）
+                            // ユーザーが「始める」ボタンをクリックしたときに表示される
                         });
                     })
                     .catch((error) => {
@@ -719,6 +774,9 @@
                             
                             alert('ログインしました！');
                             
+                            // ボタンをログイン済み状態に変更
+                            showLoggedInButtons();
+                            
                             // 位置情報の同意をチェック
                             const consentKey = `locationConsent_${user.uid}`;
                             if (localStorage.getItem(consentKey) !== 'true') {
@@ -727,12 +785,8 @@
                                 return; // 同意するまで待機
                             }
                             
-                            // 管理者メールアドレスの場合は選択画面を表示
-                            if (userData && userData.email === 'uriuri4321@gmail.com') {
-                                showAdminChoiceModal();
-                            } else {
-                                window.location.href = 'calendar.html';
-                            }
+                            // 管理者メールアドレスの場合は選択画面を表示（自動リダイレクトしない）
+                            // ユーザーが「始める」ボタンをクリックしたときに表示される
                         });
                     }
                 })
