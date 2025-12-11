@@ -277,6 +277,22 @@
             return true;
         }
         
+        // ログイン済みのボタンを表示（グローバルスコープ）
+        function showLoggedInButtons() {
+            const loginArea = document.getElementById('loginButtonsArea');
+            const loggedInArea = document.getElementById('loggedInButtonsArea');
+            if (loginArea) loginArea.style.display = 'none';
+            if (loggedInArea) loggedInArea.style.display = 'flex';
+        }
+        
+        // ログインボタンを表示（グローバルスコープ）
+        function showLoginButtons() {
+            const loginArea = document.getElementById('loginButtonsArea');
+            const loggedInArea = document.getElementById('loggedInButtonsArea');
+            if (loginArea) loginArea.style.display = 'flex';
+            if (loggedInArea) loggedInArea.style.display = 'none';
+        }
+        
         // ページ読み込み時に登録済みかチェック
         document.addEventListener('DOMContentLoaded', function() {
             // localStorageが使用可能か確認
@@ -347,22 +363,6 @@
                     console.log('未ログイン状態');
                     showLoginButtons();
                 }
-            }
-            
-            // ログイン済みのボタンを表示
-            function showLoggedInButtons() {
-                const loginArea = document.getElementById('loginButtonsArea');
-                const loggedInArea = document.getElementById('loggedInButtonsArea');
-                if (loginArea) loginArea.style.display = 'none';
-                if (loggedInArea) loggedInArea.style.display = 'flex';
-            }
-            
-            // ログインボタンを表示
-            function showLoginButtons() {
-                const loginArea = document.getElementById('loginButtonsArea');
-                const loggedInArea = document.getElementById('loggedInButtonsArea');
-                if (loginArea) loginArea.style.display = 'flex';
-                if (loggedInArea) loggedInArea.style.display = 'none';
             }
             
             // ログイン機能のセットアップ
