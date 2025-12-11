@@ -667,6 +667,21 @@
                         console.error('エラーコード:', error.code);
                         console.error('エラーメッセージ:', error.message);
                         
+                        // アプリ内ブラウザ（WebView）からのアクセスの場合
+                        if (error.code === 'auth/unauthorized-domain' || 
+                            error.message.includes('disallowed_useragent') ||
+                            error.message.includes('安全なブラウザ')) {
+                            let errorMessage = '⚠️ Googleログインエラー\n\n';
+                            errorMessage += 'アプリ内ブラウザ（LINE、Twitter、Facebook内のブラウザ）からは\n';
+                            errorMessage += 'Googleログインが使用できません。\n\n';
+                            errorMessage += '【解決方法】\n';
+                            errorMessage += '1. 通常のブラウザ（Safari、Chrome）でこのアプリを開いてください\n';
+                            errorMessage += '2. または、URLをコピーしてブラウザに貼り付けてください\n\n';
+                            errorMessage += '詳細は「Googleログインエラー403解決手順.md」を参照してください。';
+                            alert(errorMessage);
+                            return;
+                        }
+                        
                         // ポップアップがブロックされた場合やauth/popup-blockedエラーの場合、リダイレクト方式にフォールバック
                         if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
                             console.log('ポップアップがブロックされたため、リダイレクト方式に切り替えます');
@@ -690,7 +705,7 @@
                                         if (currentHost.includes(':')) {
                                             errorMessage += '   - ' + currentHost + '\n';
                                         }
-                                        errorMessage += '\n詳細は「Firebase承認済みドメイン設定手順.md」を参照してください。';
+                                        errorMessage += '\n詳細は「Googleログインエラー403解決手順.md」を参照してください。';
                                     } else if (redirectError.code === 'auth/operation-not-allowed') {
                                         errorMessage += 'Google認証が有効になっていません。\n\n';
                                         errorMessage += '【解決方法】\n';
@@ -719,7 +734,7 @@
                                 if (currentHost.includes(':')) {
                                     errorMessage += '   - ' + currentHost + '\n';
                                 }
-                                errorMessage += '\n詳細は「Firebase承認済みドメイン設定手順.md」を参照してください。';
+                                errorMessage += '\n詳細は「Googleログインエラー403解決手順.md」を参照してください。';
                             } else if (error.code === 'auth/operation-not-allowed') {
                                 errorMessage += 'Google認証が有効になっていません。\n\n';
                                 errorMessage += '【解決方法】\n';
