@@ -454,6 +454,16 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      white-space: nowrap;
+      min-height: 50px;
+    }
+    
+    @media (max-width: 480px) {
+      .tab-button {
+        padding: 16px 20px !important;
+        min-height: 56px;
+        font-size: 16px !important;
+      }
     }
     
     .tab-button.active {

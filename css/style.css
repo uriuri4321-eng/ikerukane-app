@@ -1076,13 +1076,13 @@ button {
 
     .main-title {
         font-size: 48px;
-        top: 80px;
-        padding: 20px 32px;
+        top: 60px;
+        padding: 16px 24px;
     }
 
     .catch {
         font-size: 18px;
-        top: 150px;
+        top: 180px;
         padding: 12px 20px;
         max-width: 85%;
         white-space: normal;
