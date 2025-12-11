@@ -824,7 +824,7 @@ button {
 .login-buttons-area {
     text-align: center;
     position: absolute;
-    top: 340px; /* キャッチコピー（top: 200px + padding: 16px + テキスト高さ約80px + padding: 16px = 約312px）の下に配置 */
+    top: 400px; /* PC: キャッチコピー（top: 200px + 高さ約150px = 約350px）の下に十分な余裕を持って配置 */
     left: 50%;
     transform: translate(-50%);
     z-index: 30;
@@ -839,30 +839,30 @@ button {
 
 @media (max-height: 700px) {
     .login-buttons-area {
-        top: 300px;
+        top: 360px;
     }
 }
 
 @media (max-height: 600px) {
     .login-buttons-area {
-        top: 270px;
+        top: 330px;
     }
 }
 
 @media (max-width: 480px) {
     .login-buttons-area {
-        top: 280px; /* スマホ: キャッチコピー（top: 180px + padding: 12px + テキスト高さ約58px + padding: 12px = 約262px）の下に配置 */
+        top: 350px; /* スマホ: キャッチコピー（top: 180px + 高さ約120px = 約300px）の下に十分な余裕を持って配置 */
     }
     
     @media (max-height: 700px) {
         .login-buttons-area {
-            top: 250px;
+            top: 320px;
         }
     }
     
     @media (max-height: 600px) {
         .login-buttons-area {
-            top: 230px;
+            top: 300px;
         }
     }
 }
