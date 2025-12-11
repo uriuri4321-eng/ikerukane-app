@@ -486,49 +486,103 @@
       display: block;
     }
     
-    /* 使い方セクション */
+    /* 使い方セクション - スライドショー形式 */
     .help-section {
       background: rgba(255,255,255,0.95);
       border-radius: 15px;
-      padding: 25px;
+      padding: 0;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      position: relative;
+      overflow: hidden;
+      min-height: 500px;
     }
     
-    .help-item {
-      margin-bottom: 25px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #e9ecef;
+    .help-slides-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
     }
     
-    .help-item:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
+    .help-slide {
+      display: none;
+      padding: 30px;
+      animation: fadeIn 0.5s ease;
     }
     
-    .help-item h3 {
+    .help-slide.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    .help-slide-image {
+      width: 100%;
+      max-width: 400px;
+      height: 250px;
+      margin: 0 auto 20px;
+      background: #f0f0f0;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border: 2px solid #e0e0e0;
+    }
+    
+    .help-slide-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: white;
+    }
+    
+    .help-slide-image-placeholder {
+      color: #999;
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .help-slide h3 {
       color: #4CAF50;
-      font-size: 18px;
-      margin-bottom: 10px;
+      font-size: 20px;
+      margin-bottom: 15px;
       display: flex;
       align-items: center;
       gap: 8px;
+      text-align: center;
+      justify-content: center;
     }
     
-    .help-item p {
+    .help-slide p {
       color: #666;
       line-height: 1.8;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      text-align: center;
     }
     
-    .help-item ul {
+    .help-slide ul {
       color: #666;
       line-height: 1.8;
       padding-left: 20px;
       margin-top: 10px;
+      text-align: left;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
     
-    .help-item li {
+    .help-slide li {
       margin-bottom: 8px;
     }
     
@@ -538,10 +592,75 @@
       border-radius: 8px;
       margin-top: 10px;
       border-left: 4px solid #4CAF50;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
     }
     
     .help-step strong {
       color: #4CAF50;
+    }
+    
+    /* スライドナビゲーション */
+    .help-slide-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 30px;
+      background: #f8f9fa;
+      border-top: 1px solid #e0e0e0;
+    }
+    
+    .help-slide-btn {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+    }
+    
+    .help-slide-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    }
+    
+    .help-slide-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .help-slide-indicator {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .help-slide-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .help-slide-dot.active {
+      background: #4CAF50;
+      width: 30px;
+      border-radius: 5px;
+    }
+    
+    .help-slide-counter {
+      color: #666;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 10px;
     }
   </style>
   <!-- 時間帯に応じた背景色変更 -->
@@ -609,91 +728,155 @@
     <!-- 使い方タブ -->
     <div id="helpTab" class="tab-content">
       <div class="help-section">
-        <div class="help-item">
-          <h3>📱 イケルカネとは？</h3>
-          <p>イケルカネは、お金の抑止力で遅刻を防ぐアプリです。予定を設定し、目的地に到着できなかった場合に課金される仕組みで、時間を守る習慣を身につけます。</p>
-        </div>
-        
-        <div class="help-item">
-          <h3>1️⃣ 予定の設定方法</h3>
-          <div class="help-step">
-            <p><strong>ステップ1:</strong> 「予定設定」ボタンをクリックします</p>
-            <p><strong>ステップ2:</strong> 予定タイトル（例：会議、打ち合わせ）を入力します</p>
-            <p><strong>ステップ3:</strong> 期日（日時）を設定します</p>
-            <p><strong>ステップ4:</strong> 「履歴に保存する」にチェックを入れると、次回以降の予定設定で再利用できます</p>
-            <p><strong>ステップ5:</strong> 「設定」ボタンをクリックします</p>
+        <div class="help-slides-container">
+          <!-- スライド1: イケルカネとは？ -->
+          <div class="help-slide active" data-slide="0">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                📱<br>アプリのメイン画面の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>📱 イケルカネとは？</h3>
+            <p>イケルカネは、お金の抑止力で遅刻を防ぐアプリです。予定を設定し、目的地に到着できなかった場合に課金される仕組みで、時間を守る習慣を身につけます。</p>
+          </div>
+          
+          <!-- スライド2: 予定の設定方法 -->
+          <div class="help-slide" data-slide="1">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                📅<br>予定設定画面の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>1️⃣ 予定の設定方法</h3>
+            <div class="help-step">
+              <p><strong>ステップ1:</strong> 「予定設定」ボタンをクリックします</p>
+              <p><strong>ステップ2:</strong> 予定タイトル（例：会議、打ち合わせ）を入力します</p>
+              <p><strong>ステップ3:</strong> 期日（日時）を設定します</p>
+              <p><strong>ステップ4:</strong> 「履歴に保存する」にチェックを入れると、次回以降の予定設定で再利用できます</p>
+              <p><strong>ステップ5:</strong> 「設定」ボタンをクリックします</p>
+            </div>
+          </div>
+          
+          <!-- スライド3: 目的地の設定方法 -->
+          <div class="help-slide" data-slide="2">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                🗺️<br>マップ画面の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>2️⃣ 目的地の設定方法</h3>
+            <div class="help-step">
+              <p><strong>ステップ1:</strong> 予定を設定すると、マップ画面が表示されます</p>
+              <p><strong>ステップ2:</strong> マップ上で目的地をタップするか、検索ボックスで場所を検索します</p>
+              <p><strong>ステップ3:</strong> 失敗時の課金額を設定します（例：1000円）</p>
+              <p><strong>ステップ4:</strong> 「決定」ボタンをクリックします</p>
+              <p><strong>注意:</strong> 目的地は予定ごとに設定する必要があります</p>
+            </div>
+          </div>
+          
+          <!-- スライド4: 予定の確認方法 -->
+          <div class="help-slide" data-slide="3">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                ✅<br>確認画面の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>3️⃣ 予定の確認方法</h3>
+            <div class="help-step">
+              <p><strong>ステップ1:</strong> 予定一覧から確認したい予定を選択します</p>
+              <p><strong>ステップ2:</strong> 「確認」ボタンをクリックします</p>
+              <p><strong>ステップ3:</strong> チェック画面で以下を確認できます：</p>
+              <ul>
+                <li>⏰ 残り時間（カウントダウン）</li>
+                <li>📍 現在地と目的地の位置</li>
+                <li>💰 失敗時の課金額</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- スライド5: 成功・失敗の判定 -->
+          <div class="help-slide" data-slide="4">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                🎯<br>成功・失敗判定の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>4️⃣ 成功・失敗の判定</h3>
+            <div class="help-step">
+              <p><strong>✅ 成功（クリア）:</strong></p>
+              <ul>
+                <li>期日までに目的地の100m以内に到着すると成功です</li>
+                <li>課金は発生せず、課金阻止額として記録されます</li>
+              </ul>
+              <p style="margin-top: 15px;"><strong>❌ 失敗:</strong></p>
+              <ul>
+                <li>期日までに目的地に到着できなかった場合、設定した課金額が発生します</li>
+                <li>失敗した予定は「終了した予定一覧」に記録されます</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- スライド6: 位置情報について -->
+          <div class="help-slide" data-slide="5">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                📍<br>位置情報設定の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>5️⃣ 位置情報について</h3>
+            <div class="help-step">
+              <p>アプリは位置情報を使用して、あなたの現在地を確認します。</p>
+              <ul>
+                <li>位置情報の使用を許可してください</li>
+                <li>GPSが利用できない場所では、位置情報の取得に時間がかかる場合があります</li>
+                <li>位置情報が取得できない場合でも、カウントダウンは継続されます</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- スライド7: その他の機能 -->
+          <div class="help-slide" data-slide="6">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                ⚙️<br>その他の機能の画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>6️⃣ その他の機能</h3>
+            <div class="help-step">
+              <p><strong>📚 予定履歴:</strong> 過去に設定した予定を再利用できます</p>
+              <p><strong>👤 アカウント情報:</strong> 右上の「アカウント」ボタンから、統計情報や終了した予定一覧を確認できます</p>
+              <p><strong>✅ 終了した予定一覧:</strong> アカウントメニューから、過去の成功・失敗した予定を確認できます</p>
+            </div>
+          </div>
+          
+          <!-- スライド8: ヒント -->
+          <div class="help-slide" data-slide="7">
+            <div class="help-slide-image">
+              <div class="help-slide-image-placeholder">
+                💡<br>ヒントの画像<br>（後で追加予定）
+              </div>
+            </div>
+            <h3>💡 ヒント</h3>
+            <div class="help-step">
+              <ul>
+                <li>よく使う予定は「履歴に保存する」にチェックを入れておくと便利です</li>
+                <li>課金額は適切に設定することで、より効果的に時間を守る習慣が身につきます</li>
+                <li>位置情報は定期的に更新されるため、移動中でも正確に判定されます</li>
+              </ul>
+            </div>
           </div>
         </div>
         
-        <div class="help-item">
-          <h3>2️⃣ 目的地の設定方法</h3>
-          <div class="help-step">
-            <p><strong>ステップ1:</strong> 予定を設定すると、マップ画面が表示されます</p>
-            <p><strong>ステップ2:</strong> マップ上で目的地をタップするか、検索ボックスで場所を検索します</p>
-            <p><strong>ステップ3:</strong> 失敗時の課金額を設定します（例：1000円）</p>
-            <p><strong>ステップ4:</strong> 「決定」ボタンをクリックします</p>
-            <p><strong>注意:</strong> 目的地は予定ごとに設定する必要があります</p>
+        <!-- スライドナビゲーション -->
+        <div class="help-slide-nav">
+          <button class="help-slide-btn" id="prevSlideBtn" onclick="changeSlide(-1)">← 前へ</button>
+          <div class="help-slide-indicator">
+            <span class="help-slide-counter">
+              <span id="currentSlideNum">1</span> / <span id="totalSlides">8</span>
+            </span>
+            <div id="slideDots"></div>
           </div>
-        </div>
-        
-        <div class="help-item">
-          <h3>3️⃣ 予定の確認方法</h3>
-          <div class="help-step">
-            <p><strong>ステップ1:</strong> 予定一覧から確認したい予定を選択します</p>
-            <p><strong>ステップ2:</strong> 「確認」ボタンをクリックします</p>
-            <p><strong>ステップ3:</strong> チェック画面で以下を確認できます：</p>
-            <ul>
-              <li>⏰ 残り時間（カウントダウン）</li>
-              <li>📍 現在地と目的地の位置</li>
-              <li>💰 失敗時の課金額</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="help-item">
-          <h3>4️⃣ 成功・失敗の判定</h3>
-          <div class="help-step">
-            <p><strong>✅ 成功（クリア）:</strong></p>
-            <ul>
-              <li>期日までに目的地の100m以内に到着すると成功です</li>
-              <li>課金は発生せず、課金阻止額として記録されます</li>
-            </ul>
-            <p style="margin-top: 15px;"><strong>❌ 失敗:</strong></p>
-            <ul>
-              <li>期日までに目的地に到着できなかった場合、設定した課金額が発生します</li>
-              <li>失敗した予定は「終了した予定一覧」に記録されます</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="help-item">
-          <h3>5️⃣ 位置情報について</h3>
-          <div class="help-step">
-            <p>アプリは位置情報を使用して、あなたの現在地を確認します。</p>
-            <ul>
-              <li>位置情報の使用を許可してください</li>
-              <li>GPSが利用できない場所では、位置情報の取得に時間がかかる場合があります</li>
-              <li>位置情報が取得できない場合でも、カウントダウンは継続されます</li>
-            </ul>
-          </div>
-        </div>
-        
-        <div class="help-item">
-          <h3>6️⃣ その他の機能</h3>
-          <div class="help-step">
-            <p><strong>📚 予定履歴:</strong> 過去に設定した予定を再利用できます</p>
-            <p><strong>👤 アカウント情報:</strong> 右上の「アカウント」ボタンから、統計情報や終了した予定一覧を確認できます</p>
-            <p><strong>✅ 終了した予定一覧:</strong> アカウントメニューから、過去の成功・失敗した予定を確認できます</p>
-          </div>
-        </div>
-        
-        <div class="help-item">
-          <h3>💡 ヒント</h3>
-          <ul>
-            <li>よく使う予定は「履歴に保存する」にチェックを入れておくと便利です</li>
-            <li>課金額は適切に設定することで、より効果的に時間を守る習慣が身につきます</li>
-            <li>位置情報は定期的に更新されるため、移動中でも正確に判定されます</li>
-          </ul>
+          <button class="help-slide-btn" id="nextSlideBtn" onclick="changeSlide(1)">次へ →</button>
         </div>
       </div>
     </div>
@@ -1266,6 +1449,85 @@
         });
       });
     });
+    
+    // 使い方スライドショーの機能
+    let currentSlideIndex = 0;
+    const slides = document.querySelectorAll('.help-slide');
+    const totalSlides = slides.length;
+    
+    // スライド数を表示
+    document.getElementById('totalSlides').textContent = totalSlides;
+    
+    // スライドインジケーター（ドット）を生成
+    function createSlideDots() {
+      const dotsContainer = document.getElementById('slideDots');
+      dotsContainer.innerHTML = '';
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'help-slide-dot' + (i === 0 ? ' active' : '');
+        dot.setAttribute('data-slide', i);
+        dot.addEventListener('click', () => goToSlide(i));
+        dotsContainer.appendChild(dot);
+      }
+    }
+    
+    // スライドを変更
+    function changeSlide(direction) {
+      const newIndex = currentSlideIndex + direction;
+      if (newIndex >= 0 && newIndex < totalSlides) {
+        goToSlide(newIndex);
+      }
+    }
+    
+    // 指定したスライドに移動
+    function goToSlide(index) {
+      if (index < 0 || index >= totalSlides) return;
+      
+      // 現在のスライドを非表示
+      slides[currentSlideIndex].classList.remove('active');
+      document.querySelectorAll('.help-slide-dot')[currentSlideIndex].classList.remove('active');
+      
+      // 新しいスライドを表示
+      currentSlideIndex = index;
+      slides[currentSlideIndex].classList.add('active');
+      document.querySelectorAll('.help-slide-dot')[currentSlideIndex].classList.add('active');
+      
+      // スライド番号を更新
+      document.getElementById('currentSlideNum').textContent = currentSlideIndex + 1;
+      
+      // ボタンの有効/無効を更新
+      updateNavButtons();
+    }
+    
+    // ナビゲーションボタンの有効/無効を更新
+    function updateNavButtons() {
+      const prevBtn = document.getElementById('prevSlideBtn');
+      const nextBtn = document.getElementById('nextSlideBtn');
+      
+      prevBtn.disabled = currentSlideIndex === 0;
+      nextBtn.disabled = currentSlideIndex === totalSlides - 1;
+    }
+    
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      createSlideDots();
+      updateNavButtons();
+      
+      // キーボード操作（左右矢印キー）
+      document.addEventListener('keydown', function(e) {
+        if (document.getElementById('helpTab').classList.contains('active')) {
+          if (e.key === 'ArrowLeft') {
+            changeSlide(-1);
+          } else if (e.key === 'ArrowRight') {
+            changeSlide(1);
+          }
+        }
+      });
+    });
+    
+    // グローバルスコープに公開
+    window.changeSlide = changeSlide;
+    window.goToSlide = goToSlide;
   </script>
 </body>
 </html>
