@@ -824,7 +824,7 @@ button {
 .login-buttons-area {
     text-align: center;
     position: relative;
-    margin-top: 320px;
+    margin-top: 360px; /* キャッチコピーの下に配置 */
     margin-bottom: 40px;
     left: 50%;
     transform: translate(-50%);
@@ -840,31 +840,31 @@ button {
 
 @media (max-height: 700px) {
     .login-buttons-area {
-        margin-top: 280px;
+        margin-top: 320px;
     }
 }
 
 @media (max-height: 600px) {
     .login-buttons-area {
-        margin-top: 240px;
+        margin-top: 280px;
     }
 }
 
 @media (max-width: 480px) {
     .login-buttons-area {
-        margin-top: 220px;
+        margin-top: 310px; /* スマホでもキャッチコピーの下に配置 */
         margin-bottom: 30px;
     }
     
     @media (max-height: 700px) {
         .login-buttons-area {
-            margin-top: 200px;
+            margin-top: 280px;
         }
     }
     
     @media (max-height: 600px) {
         .login-buttons-area {
-            margin-top: 180px;
+            margin-top: 250px;
         }
     }
 }
