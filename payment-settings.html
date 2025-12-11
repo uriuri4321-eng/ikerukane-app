@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+    <title>イケルカネ - 支払方法設定</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <!-- 時間帯に応じた背景色変更 -->
+    <script src="js/background-time.js"></script>
+    <style>
+        /* CSS変数の定義 */
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --bg-white: #ffffff;
+            --primary-color: #4CAF50;
+            --primary-dark: #45a049;
+            --secondary-color: #FF9800;
+            --secondary-dark: #F57C00;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 25px;
+            --transition-normal: 0.3s ease;
+        }
+
+        html {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%) !important;
+            background-attachment: fixed !important;
+            min-height: 100vh !important;
+        }
+
+        body {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background: transparent !important;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .payment-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .back-button {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-xl);
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all var(--transition-normal);
+        }
+
+        .back-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .payment-method-section {
+            margin-bottom: 30px;
+        }
+
+        .payment-method-card {
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+            transition: all var(--transition-normal);
+        }
+
+        .payment-method-card:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        .payment-method-card.active {
+            border-color: var(--primary-color);
+            background: #f0f8f0;
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .payment-method-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .payment-method-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .payment-method-icon {
+            font-size: 28px;
+        }
+
+        .payment-method-status {
+            padding: 6px 12px;
+            border-radius: var(--radius-xl);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .payment-method-status.set {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .payment-method-status.not-set {
+            background: #ccc;
+            color: #666;
+        }
+
+        .payment-form {
+            display: none;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .payment-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: all var(--transition-normal);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .save-button {
+            width: 100%;
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            padding: 14px 20px;
+            border: none;
+            border-radius: var(--radius-xl);
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+
+        .save-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-message {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            color: #1976D2;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .warning-message {
+            background: #fff3e0;
+            border-left: 4px solid #FF9800;
+            padding: 15px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            color: #F57C00;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 480px) {
+            .payment-container {
+                padding: 20px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="page-header">
+            <h1>💳 支払方法設定</h1>
+            <a href="calendar.html" class="back-button">← 戻る</a>
+        </div>
+
+        <div class="info-message">
+            <strong>📌 ご注意</strong><br>
+            現在、支払方法の設定は任意です。将来的には支払方法の設定が必須になる予定です。
+        </div>
+
+        <!-- クレジットカード -->
+        <div class="payment-method-section">
+            <div class="payment-method-card" id="creditCardCard">
+                <div class="payment-method-header">
+                    <div class="payment-method-title">
+                        <span class="payment-method-icon">💳</span>
+                        <span>クレジットカード</span>
+                    </div>
+                    <span class="payment-method-status not-set" id="creditCardStatus">未設定</span>
+                </div>
+                <div class="payment-form" id="creditCardForm">
+                    <div class="form-group">
+                        <label>カード番号</label>
+                        <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>有効期限（月/年）</label>
+                            <input type="text" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label>セキュリティコード</label>
+                            <input type="text" id="cardCvv" placeholder="123" maxlength="4">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>カード名義人</label>
+                        <input type="text" id="cardName" placeholder="TARO YAMADA">
+                    </div>
+                    <button class="save-button" onclick="saveCreditCard()">クレジットカードを保存</button>
+                </div>
+                <button class="save-button" onclick="togglePaymentForm('creditCard')" id="creditCardToggleBtn" style="margin-top: 10px;">
+                    設定を開く
+                </button>
+            </div>
+        </div>
+
+        <!-- PayPay -->
+        <div class="payment-method-section">
+            <div class="payment-method-card" id="paypayCard">
+                <div class="payment-method-header">
+                    <div class="payment-method-title">
+                        <span class="payment-method-icon">📱</span>
+                        <span>PayPay</span>
+                    </div>
+                    <span class="payment-method-status not-set" id="paypayStatus">未設定</span>
+                </div>
+                <div class="payment-form" id="paypayForm">
+                    <div class="warning-message">
+                        <strong>⚠️ セキュリティについて</strong><br>
+                        PayPayの連携には、PayPayアプリでの認証が必要です。QRコードをスキャンして認証を完了してください。
+                    </div>
+                    <div class="form-group">
+                        <label>PayPayアカウント（電話番号またはメールアドレス）</label>
+                        <input type="text" id="paypayAccount" placeholder="090-1234-5678 または example@paypay.ne.jp">
+                    </div>
+                    <div class="form-group">
+                        <label>認証用QRコード</label>
+                        <div id="paypayQrCode" style="
+                            width: 200px;
+                            height: 200px;
+                            margin: 20px auto;
+                            background: #f0f0f0;
+                            border: 2px dashed var(--border-color);
+                            border-radius: var(--radius-md);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: var(--text-secondary);
+                            font-size: 14px;
+                            text-align: center;
+                            padding: 20px;
+                        ">
+                            認証用QRコードを生成中...
+                        </div>
+                    </div>
+                    <button class="save-button" onclick="savePayPay()">PayPayを連携</button>
+                </div>
+                <button class="save-button" onclick="togglePaymentForm('paypay')" id="paypayToggleBtn" style="margin-top: 10px;">
+                    設定を開く
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/payment-settings.js"></script>
+</body>
+</html>
+

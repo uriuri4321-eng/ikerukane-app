@@ -70,6 +70,26 @@ function showAccountSettings() {
                     <div style="margin-top: 5px;"><strong>ユーザーID:</strong> ${currentUserId}</div>
                 </div>
                 
+                <div style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                    <button id="openPaymentSettingsBtn" style="
+                        width: 100%;
+                        background: linear-gradient(45deg, #FF9800, #F57C00);
+                        color: white;
+                        padding: 14px 20px;
+                        border: none;
+                        border-radius: 12px;
+                        font-size: 16px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        margin-bottom: 10px;
+                        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(255, 152, 0, 0.4)';" 
+                       onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 12px rgba(255, 152, 0, 0.3)';">
+                        💳 支払方法設定
+                    </button>
+                </div>
+                
                 <div style="margin-top: 30px; text-align: center;">
                     <button id="saveUsernameBtn" style="
                         background: linear-gradient(45deg, #4CAF50, #45a049);
@@ -104,6 +124,10 @@ function showAccountSettings() {
     document.getElementById('closeSettingsModal').addEventListener('click', closeAccountSettings);
     document.getElementById('cancelSettingsBtn').addEventListener('click', closeAccountSettings);
     document.getElementById('saveUsernameBtn').addEventListener('click', saveUsername);
+    document.getElementById('openPaymentSettingsBtn').addEventListener('click', () => {
+        closeAccountSettings();
+        window.location.href = 'payment-settings.html';
+    });
 
     // モーダル外をクリックで閉じる
     document.getElementById('accountSettingsModal').addEventListener('click', function(e) {
