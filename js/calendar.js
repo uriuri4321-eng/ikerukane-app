@@ -477,6 +477,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 minute: '2-digit'
             });
 
+            // 残り時間を計算（ミリ秒）
+            const now = new Date();
+            const timeRemaining = eventDate.getTime() - now.getTime();
+            const minutesRemaining = timeRemaining / (1000 * 60); // 分に変換
+            const canDelete = minutesRemaining >= 90; // 1時間半（90分）以上残っている場合のみ削除可能
+
             html += `
                 <div class="event-item">
                     <div class="event-info">
@@ -485,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="event-actions">
                         <button class="btn btn-primary btn-small" onclick="selectEvent('${event.id}')">確認</button>
-                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">削除</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')" ${canDelete ? '' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'} title="${canDelete ? '' : '終了時間が1時間半を切っているため削除できません'}">削除</button>
                     </div>
                 </div>
             `;
@@ -722,18 +728,33 @@ document.addEventListener('DOMContentLoaded', function() {
     window.deleteEvent = async function(eventId) {
         await dataReadyPromise;
 
+        const eventToDelete = savedEvents.find(e => e.id == eventId);
+        if (!eventToDelete) {
+            alert('予定が見つかりません');
+            return;
+        }
+
+        // 残り時間を計算
+        const eventDate = new Date(eventToDelete.start || eventToDelete.end);
+        const now = new Date();
+        const timeRemaining = eventDate.getTime() - now.getTime();
+        const minutesRemaining = timeRemaining / (1000 * 60); // 分に変換
+
+        // 1時間半（90分）未満の場合は削除不可
+        if (minutesRemaining < 90) {
+            alert('終了時間が1時間半を切っているため、予定を削除できません。');
+            return;
+        }
+
         if (confirm('この予定を削除しますか？')) {
-            const eventToDelete = savedEvents.find(e => e.id == eventId);
             savedEvents = savedEvents.filter(e => e.id != eventId);
             localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
             
             // Firestoreからも削除
-            if (eventToDelete) {
-                deleteEventDocument(eventToDelete);
-                const selectedId = localStorage.getItem('selectedEventId');
-                if (selectedId && selectedId === (getEventDocId(eventToDelete) || '')) {
-                    localStorage.removeItem('selectedEventId');
-                }
+            deleteEventDocument(eventToDelete);
+            const selectedId = localStorage.getItem('selectedEventId');
+            if (selectedId && selectedId === (getEventDocId(eventToDelete) || '')) {
+                localStorage.removeItem('selectedEventId');
             }
             
             displayEvents(); // 一覧を更新
