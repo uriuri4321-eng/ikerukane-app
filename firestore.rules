@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ヘルパー関数: 認証済みユーザーかチェック
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // ヘルパー関数: リクエストユーザーIDと一致するかチェック
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ヘルパー関数: 管理者かチェック（uriuri4321@gmail.com）
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.email == 'uriuri4321@gmail.com';
+    }
+    
+    // usersコレクション: ユーザー情報
+    match /users/{userId} {
+      // 読み取り: 自分のデータのみ、または管理者
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // 作成: 認証済みユーザーが自分のIDで作成
+      allow create: if isAuthenticated() && 
+                        request.auth.uid == userId &&
+                        request.resource.data.id == userId;
+      
+      // 更新: 自分のデータのみ、または管理者
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // 削除: 自分のデータのみ、または管理者
+      allow delete: if isOwner(userId) || isAdmin();
+      
+      // paymentMethodsサブコレクション（将来の拡張用）
+      match /paymentMethods/{paymentMethodId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+    
+    // eventsコレクション: 予定情報
+    match /events/{eventId} {
+      // 読み取り: 自分の予定のみ、または管理者
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // 作成: 認証済みユーザーが自分のuserIdで作成
+      allow create: if isAuthenticated() && 
+                        request.resource.data.userId == request.auth.uid;
+      
+      // 更新: 自分の予定のみ、または管理者
+      allow update: if isAuthenticated() && 
+                        (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // 削除: 自分の予定のみ、または管理者
+      allow delete: if isAuthenticated() && 
+                       (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // penaltiesコレクション: 課金情報
+    match /penalties/{penaltyId} {
+      // 読み取り: 自分の課金情報のみ、または管理者
+      allow read: if isAuthenticated() && 
+                     (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // 作成: 認証済みユーザーが自分のuserIdで作成
+      allow create: if isAuthenticated() && 
+                        request.resource.data.userId == request.auth.uid;
+      
+      // 更新: 管理者のみ（通常はユーザーは更新不可）
+      allow update: if isAdmin();
+      
+      // 削除: 管理者のみ
+      allow delete: if isAdmin();
+    }
+    
+    // その他のコレクションはデフォルトで拒否
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
