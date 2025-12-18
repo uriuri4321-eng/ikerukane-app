@@ -304,13 +304,17 @@ function startWatchingPosition() {
             
             // 距離を計算してチェック（設定した日付・時刻に達した場合のみ）
             // ただし、リアルタイムでの位置表示は継続
-            if (!window.cleared && !window.charged && !window.arrivalChecked) {
+            // updateTime関数で既に判定が実行されている場合はスキップ
+            if (!window.cleared && !window.charged) {
                 const now = new Date();
                 const targetTime = targetDate ? targetDate.getTime() : 0;
                 const currentTime = now.getTime();
                 
                 // 設定した日付・時刻に達した場合のみ判定を実行
-                if (targetTime > 0 && currentTime >= targetTime) {
+                // ただし、updateTime関数で既に判定が実行されている場合はスキップ
+                if (targetTime > 0 && currentTime >= targetTime && !window.arrivalChecked) {
+                    // arrivalCheckedフラグを設定（重複実行を防ぐ）
+                    window.arrivalChecked = true;
                     calculateAndCheckDistance(currentLat, currentLng);
                 }
             }
@@ -387,7 +391,11 @@ function updateTime() {
     let diff = targetDate.getTime() - now.getTime();
 
     // 設定した日付・時刻に達した場合、到着判定を実行
+    // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
     if (diff <= 0 && !window.arrivalChecked && !window.cleared && !window.charged) {
+        // 判定済みフラグを先に設定（重複実行を防ぐ）
+        window.arrivalChecked = true;
+        
         // 現在位置を取得して判定
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -397,6 +405,7 @@ function updateTime() {
                     // 最後に取得した位置情報を保存
                     window.lastKnownLat = nowLat;
                     window.lastKnownLng = nowLng;
+                    // 判定を実行（arrivalCheckedフラグは既に設定済み）
                     calculateAndCheckDistance(nowLat, nowLng);
                 },
                 function(error) {
@@ -408,7 +417,6 @@ function updateTime() {
                         // 位置情報が取得できない場合は時間切れとして処理
                         if(!window.charged) {
                             window.charged = true;
-                            window.arrivalChecked = true;
                             
                             // カウントダウンを停止
                             if(TimeInterval) {
@@ -437,6 +445,35 @@ function updateTime() {
                     maximumAge: 0 // 最新の位置情報を使用
                 }
             );
+        } else {
+            // 位置情報APIが利用できない場合
+            if (window.lastKnownLat && window.lastKnownLng) {
+                calculateAndCheckDistance(window.lastKnownLat, window.lastKnownLng);
+            } else {
+                // 位置情報が取得できない場合は時間切れとして処理
+                if(!window.charged) {
+                    window.charged = true;
+                    
+                    // カウントダウンを停止
+                    if(TimeInterval) {
+                        clearInterval(TimeInterval);
+                        TimeInterval = null;
+                    }
+                    
+                    // 距離チェックを停止
+                    if(distanceCheckInterval) {
+                        clearInterval(distanceCheckInterval);
+                        distanceCheckInterval = null;
+                    }
+                    
+                    TimeElm.textContent = "時間切れ！！";
+                    TimeElm.style.color = "#FF0000";
+                    TimeElm.style.fontWeight = "bold";
+                    
+                    alert(`⏰ 時間切れ\n期日までに目的地に到着できませんでした。\n${money}円が課金されます。`);
+                    recordEventResult('failed', money, 0);
+                }
+            }
         }
         return;
     }
@@ -569,7 +606,9 @@ function calculateAndCheckDistance(nowLat, nowLng) {
     
     // 設定した日付・時刻を過ぎた場合のみ判定を実行
     // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
-    if (window.arrivalChecked) {
+    // 注意：arrivalCheckedフラグはupdateTime関数またはwatchPositionコールバックで既に設定されている可能性がある
+    // 既にクリアまたは時間切れの場合はスキップ
+    if (window.cleared || window.charged) {
         return;
     }
 
@@ -580,7 +619,10 @@ function calculateAndCheckDistance(nowLat, nowLng) {
     );
 
     // 判定済みフラグを設定（一度だけ判定を実行）
-    window.arrivalChecked = true;
+    // updateTime関数またはwatchPositionコールバックで既に設定されている場合はスキップ
+    if (!window.arrivalChecked) {
+        window.arrivalChecked = true;
+    }
 
     // 100m以内に到達していた場合
     if(distance < 0.1) { // 0.1km = 100m
@@ -803,8 +845,20 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
             }
             
             // 定期予定の場合、次週の予定を作成
+            // ただし、既に作成済みの場合はスキップ（重複防止）
             if (event && event.isRecurring) {
-                createNextWeekRecurringEvent(event, currentUserId, eventDeadline);
+                const nextWeekCreated = localStorage.getItem(`recurringNextWeekCreated_${event.id || event.firestoreId || eventTitle}`);
+                if (!nextWeekCreated) {
+                    createNextWeekRecurringEvent(event, currentUserId, eventDeadline);
+                    // 作成済みフラグを設定（24時間有効）
+                    localStorage.setItem(`recurringNextWeekCreated_${event.id || event.firestoreId || eventTitle}`, 'true');
+                    // 24時間後にフラグを削除（次の週の予定作成を許可）
+                    setTimeout(() => {
+                        localStorage.removeItem(`recurringNextWeekCreated_${event.id || event.firestoreId || eventTitle}`);
+                    }, 24 * 60 * 60 * 1000);
+                } else {
+                    console.log('次週の予定は既に作成済みです（重複防止）');
+                }
             }
 
             // 選択中のイベントIDをクリア

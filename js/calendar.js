@@ -81,7 +81,26 @@ document.addEventListener('DOMContentLoaded', function() {
             const deadline = new Date(recurringEvent.deadline);
             
             // 期日が過ぎている場合、次週の予定を作成
+            // ただし、check.jsのrecordEventResultで既に作成された場合はスキップ（重複防止）
             if (deadline <= now) {
+                // 既にcheck.jsで次週の予定が作成されたかチェック
+                const nextWeekCreatedKey = `recurringNextWeekCreated_${recurringEvent.title}`;
+                const nextWeekCreated = localStorage.getItem(nextWeekCreatedKey);
+                if (nextWeekCreated) {
+                    console.log('次週の予定は既に作成済みです（check.jsで作成）:', recurringEvent.title);
+                    // 定期予定の次回日付を更新（次週の予定が既に作成されているため）
+                    const nextWeekDeadline = new Date(deadline);
+                    nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                    const year = nextWeekDeadline.getFullYear();
+                    const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
+                    const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
+                    const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
+                    const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
+                    const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+                    recurringEvents[index].deadline = nextWeekDeadlineStr;
+                    hasUpdates = true;
+                    return; // スキップ
+                }
                 // 次週の日付を計算（同じ曜日・同じ時刻）
                 const nextWeekDeadline = new Date(deadline);
                 nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
