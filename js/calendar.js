@@ -77,13 +77,22 @@ document.addEventListener('DOMContentLoaded', function() {
         let hasUpdates = false;
         
         recurringEvents.forEach((recurringEvent, index) => {
+            // deadlineはdatetime-local形式（YYYY-MM-DDTHH:mm）なので、そのままDateオブジェクトに変換
             const deadline = new Date(recurringEvent.deadline);
             
             // 期日が過ぎている場合、次週の予定を作成
             if (deadline <= now) {
-                // 次週の日付を計算
+                // 次週の日付を計算（同じ曜日・同じ時刻）
                 const nextWeekDeadline = new Date(deadline);
                 nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                
+                // datetime-local形式に変換（ローカル時間を保持）
+                const year = nextWeekDeadline.getFullYear();
+                const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
+                const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
+                const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
+                const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
+                const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
                 
                 // 既に同じ予定が存在するかチェック
                 const existingEvent = savedEvents.find(e => 
@@ -98,8 +107,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         firestoreId: null,
                         userId: currentUserId,
                         title: recurringEvent.title,
-                        start: nextWeekDeadline.toISOString(),
-                        end: nextWeekDeadline.toISOString(),
+                        start: nextWeekDeadlineStr, // datetime-local形式を保持
+                        end: nextWeekDeadlineStr,
                         allDay: false,
                         createdAt: new Date().toISOString(),
                         updatedAt: new Date().toISOString(),
@@ -121,6 +130,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             id: docRef.id,
                             firestoreId: docRef.id,
                             userId: currentUserId,
+                            // FirestoreにはISO形式で保存
+                            start: nextWeekDeadline.toISOString(),
+                            end: nextWeekDeadline.toISOString(),
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                         };
@@ -129,11 +141,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
                     
-                    console.log('定期予定から次週の予定を作成しました:', newEvent);
+                    console.log('定期予定から次週の予定を作成しました:', {
+                        title: newEvent.title,
+                        deadline: nextWeekDeadlineStr,
+                        originalDeadline: deadline.toLocaleString('ja-JP')
+                    });
                 }
                 
-                // 定期予定の次回日付を更新
-                recurringEvents[index].deadline = nextWeekDeadline.toISOString().slice(0, 16);
+                // 定期予定の次回日付を更新（datetime-local形式で保存）
+                recurringEvents[index].deadline = nextWeekDeadlineStr;
                 hasUpdates = true;
             }
         });
@@ -885,17 +901,38 @@ document.addEventListener('DOMContentLoaded', function() {
             const locationInfo = hasLocation ? '📍 位置情報あり' : '📍 位置情報なし';
             const escapedTitle = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             html += `
-                <div class="event-item" style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid ${hasLocation ? '#4CAF50' : '#ccc'}; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                    <div style="flex: 1; cursor: pointer;" onclick="useHistory('${escapedTitle}', ${item.lat || 'null'}, ${item.lng || 'null'})">
+                <div class="event-item history-item" data-index="${index}" style="background: #f8f9fa; padding: 12px; border-radius: 8px; border-left: 4px solid ${hasLocation ? '#4CAF50' : '#ccc'}; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div class="history-item-content" style="flex: 1; cursor: pointer;" data-title="${escapedTitle}" data-lat="${item.lat || 'null'}" data-lng="${item.lng || 'null'}">
                         <div class="event-title" style="font-weight: bold; color: #333;">${item.title}</div>
                         <div style="font-size: 12px; color: ${hasLocation ? '#4CAF50' : '#666'}; margin-top: 5px;">${locationInfo}</div>
                     </div>
-                    <button onclick="deleteHistoryItem('${escapedTitle}'); event.stopPropagation();" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 10px;">削除</button>
+                    <button class="delete-history-btn" data-title="${escapedTitle}" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 10px;">削除</button>
                 </div>
             `;
         });
         
         historyContainer.innerHTML = html;
+        
+        // イベントリスナーを追加
+        const historyItems = historyContainer.querySelectorAll('.history-item-content');
+        historyItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const title = this.getAttribute('data-title');
+                const lat = this.getAttribute('data-lat');
+                const lng = this.getAttribute('data-lng');
+                useHistory(title, lat === 'null' ? null : parseFloat(lat), lng === 'null' ? null : parseFloat(lng));
+            });
+        });
+        
+        // 削除ボタンのイベントリスナーを追加
+        const deleteButtons = historyContainer.querySelectorAll('.delete-history-btn');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const title = this.getAttribute('data-title');
+                deleteHistoryItem(title);
+            });
+        });
     }
     
     // グローバルスコープに公開
@@ -912,19 +949,28 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // タイトルを設定
         titleInput.value = title;
-        eventForm.style.display = 'block';
+        
+        // 予定入力フォームを表示
+        if (eventForm) {
+            eventForm.style.display = 'block';
+        }
+        
+        // フォーカスを設定
         titleInput.focus();
         
         // deadlineInputが存在する場合はフォーカス
         if (deadlineInput) {
-            deadlineInput.focus();
+            setTimeout(() => {
+                deadlineInput.focus();
+            }, 100);
         }
         
         // 位置情報がある場合は保存しておく（map.htmlで使用）
-        if (lat && lng && lat !== 'null' && lng !== 'null') {
-            localStorage.setItem('savedHistoryLat', lat);
-            localStorage.setItem('savedHistoryLng', lng);
+        if (lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)) {
+            localStorage.setItem('savedHistoryLat', lat.toString());
+            localStorage.setItem('savedHistoryLng', lng.toString());
             localStorage.setItem('savedHistoryTitle', title);
             console.log('位置情報を保存しました:', { lat, lng, title });
         } else {
@@ -946,22 +992,8 @@ document.addEventListener('DOMContentLoaded', function() {
             historyTabButton.classList.remove('active');
             calendarTabButton.classList.add('active');
         }
-    };
-        titleInput.value = title;
-        eventForm.style.display = 'block';
-        titleInput.focus();
-        deadlineInput.focus();
         
-        // 位置情報がある場合は保存しておく（map.htmlで使用）
-        if (lat && lng && lat !== 'null' && lng !== 'null') {
-            localStorage.setItem('savedHistoryLat', lat);
-            localStorage.setItem('savedHistoryLng', lng);
-            localStorage.setItem('savedHistoryTitle', title);
-        } else {
-            localStorage.removeItem('savedHistoryLat');
-            localStorage.removeItem('savedHistoryLng');
-            localStorage.removeItem('savedHistoryTitle');
-        }
+        console.log('予定入力フォームを表示しました');
     };
     
     // 予定履歴から項目を削除

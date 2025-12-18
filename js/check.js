@@ -801,10 +801,111 @@ function recordEventResult(status, penaltyAmount, preventedAmount) {
                         console.error('Firestoreへの課金情報保存エラー:', error);
                     });
             }
+            
+            // 定期予定の場合、次週の予定を作成
+            if (event && event.isRecurring) {
+                createNextWeekRecurringEvent(event, currentUserId, eventDeadline);
+            }
 
             // 選択中のイベントIDをクリア
             localStorage.removeItem('selectedEventId');
         }
+    }
+}
+
+// 定期予定の次週の予定を作成する関数
+function createNextWeekRecurringEvent(event, currentUserId, eventDeadlineStr) {
+    if (!event || !currentUserId) {
+        console.warn('定期予定の次週予定作成に必要な情報が不足しています');
+        return;
+    }
+    
+    // 現在の予定の日時を取得（ローカル時間を保持）
+    // eventDeadlineStrがdatetime-local形式（YYYY-MM-DDTHH:mm）の場合とISO形式の場合がある
+    let currentDeadline;
+    if (eventDeadlineStr) {
+        currentDeadline = new Date(eventDeadlineStr);
+    } else if (event.start) {
+        currentDeadline = new Date(event.start);
+    } else if (event.end) {
+        currentDeadline = new Date(event.end);
+    } else {
+        console.warn('予定の日時を取得できません');
+        return;
+    }
+    
+    // 次週の日時を計算（同じ曜日・同じ時刻）
+    const nextWeekDeadline = new Date(currentDeadline);
+    nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+    
+    // datetime-local形式に変換（ローカル時間を保持）
+    const year = nextWeekDeadline.getFullYear();
+    const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
+    const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
+    const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
+    const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
+    const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+    
+    // 既に同じ予定が存在するかチェック
+    const eventsKey = `events_${currentUserId}`;
+    let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+    
+    const existingEvent = savedEvents.find(e => 
+        e.title === event.title && 
+        e.isRecurring &&
+        Math.abs(new Date(e.start).getTime() - nextWeekDeadline.getTime()) < 60000 // 1分以内の誤差を許容
+    );
+    
+    if (!existingEvent) {
+        // 新しい予定を作成
+        const newEvent = {
+            id: Date.now().toString() + '_recurring_' + Math.random().toString(36).substr(2, 9),
+            firestoreId: null,
+            userId: currentUserId,
+            title: event.title,
+            start: nextWeekDeadlineStr, // datetime-local形式を保持
+            end: nextWeekDeadlineStr,
+            allDay: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: 'active',
+            lat: event.lat,
+            lng: event.lng,
+            money: event.money,
+            isRecurring: true
+        };
+        
+        savedEvents.push(newEvent);
+        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        
+        // Firestoreに保存
+        if (typeof db !== 'undefined' && db && currentUserId) {
+            const docRef = db.collection('events').doc();
+            const firestorePayload = {
+                ...newEvent,
+                id: docRef.id,
+                firestoreId: docRef.id,
+                userId: currentUserId,
+                // FirestoreにはISO形式で保存
+                start: nextWeekDeadline.toISOString(),
+                end: nextWeekDeadline.toISOString(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            docRef.set(firestorePayload).catch(error => {
+                console.error('次週の予定のFirestore保存エラー:', error);
+            });
+        }
+        
+        console.log('定期予定から次週の予定を作成しました:', {
+            title: newEvent.title,
+            deadline: nextWeekDeadlineStr,
+            originalDeadline: currentDeadline.toLocaleString('ja-JP'),
+            originalTime: currentDeadline.getHours() + ':' + String(currentDeadline.getMinutes()).padStart(2, '0'),
+            nextWeekTime: nextWeekDeadline.getHours() + ':' + String(nextWeekDeadline.getMinutes()).padStart(2, '0')
+        });
+    } else {
+        console.log('次週の予定は既に存在します:', existingEvent);
     }
 }
 

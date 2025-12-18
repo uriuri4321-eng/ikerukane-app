@@ -340,15 +340,26 @@ window.addEventListener("load", () => {
             if (!currentUserId) {
                 console.warn('定期予定の設定にcurrentUserIdが必要です');
             } else {
-                // 定期予定の場合、次週の予定を自動作成
+                // 定期予定の場合、次週の予定情報を保存（予定終了時に作成される）
+                // 現在の予定の日時を取得（ローカル時間を保持）
                 const currentDeadline = new Date(eventDeadline);
-                const nextWeekDeadline = new Date(currentDeadline);
-                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7); // 1週間後
                 
-                // 次週の予定を作成（calendar.htmlに戻った時に自動的に作成されるように保存）
+                // 次週の日時を計算（同じ曜日・同じ時刻）
+                const nextWeekDeadline = new Date(currentDeadline);
+                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                
+                // datetime-local形式に変換（ローカル時間を保持）
+                const year = nextWeekDeadline.getFullYear();
+                const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
+                const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
+                const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
+                const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
+                const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+                
+                // 次週の予定情報を保存（予定終了時に作成される）
                 const nextWeekEvent = {
                     title: eventTitle,
-                    deadline: nextWeekDeadline.toISOString().slice(0, 16), // datetime-local形式
+                    deadline: nextWeekDeadlineStr, // datetime-local形式（ローカル時間を保持）
                     lat: lat,
                     lng: lng,
                     money: setmoney,
@@ -369,8 +380,8 @@ window.addEventListener("load", () => {
                 
                 localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
                 
-                // 次週の予定を即座に作成（calendar.htmlに戻った時に表示されるように）
-                createNextWeekEvent(nextWeekEvent, currentUserId);
+                // 次週の予定は今週の予定が終了したタイミングで作成される（check.jsのrecordEventResultで処理）
+                console.log('定期予定情報を保存しました。予定終了時に次週の予定が自動作成されます。');
             }
         }
         
