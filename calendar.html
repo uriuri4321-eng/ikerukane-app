@@ -717,6 +717,7 @@
       <div class="tab-container">
         <div class="tab-buttons">
           <button class="tab-button active" data-tab="calendar">📅 予定管理</button>
+          <button class="tab-button" data-tab="history">📚 予定履歴</button>
           <button class="tab-button" data-tab="help">❓ 使い方</button>
         </div>
       </div>
@@ -738,8 +739,8 @@
         <input type="datetime-local" id="eventDeadlineInput">
       </div>
       <div class="form-group" style="display: flex; align-items: center; gap: 8px; flex-direction: row;">
-        <input type="checkbox" id="saveToHistory" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;">
-        <label for="saveToHistory" style="margin: 0; cursor: pointer; font-size: 14px; line-height: 1.5;">履歴に保存する</label>
+        <input type="checkbox" id="isRecurring" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;">
+        <label for="isRecurring" style="margin: 0; cursor: pointer; font-size: 14px; line-height: 1.5;">定期予定（毎週同じ時間・場所で自動設定）</label>
       </div>
       <div class="form-buttons">
         <button id="saveEventBtn" class="btn btn-primary">設定</button>
@@ -755,13 +756,17 @@
       </div>
     </div>
     
-    <!-- 予定履歴セクション -->
-    <div class="events-list" style="margin-top: 30px;">
-      <h3>📚 予定履歴（再利用）</h3>
-      <div id="eventHistoryContainer" style="display: grid; gap: 10px; margin-top: 15px;">
-        <!-- 履歴がここに表示されます -->
-      </div>
     </div>
+    
+    <!-- 予定履歴タブ -->
+    <div id="historyTab" class="tab-content">
+      <div class="events-list">
+        <h3>📚 予定履歴（直近10件）</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 20px;">過去に設定した予定を確認できます。クリックすると再利用できます。</p>
+        <div id="eventHistoryContainer" style="display: grid; gap: 10px; margin-top: 15px;">
+          <!-- 履歴がここに表示されます -->
+        </div>
+      </div>
     </div>
     
     <!-- 使い方タブ -->

@@ -329,14 +329,44 @@ window.addEventListener("load", () => {
             }
         }
         
-        // 履歴に保存するチェックが入っている場合のみ、予定履歴に位置情報も保存
-        const saveToHistory = localStorage.getItem('saveToHistory') === 'true';
-        if (saveToHistory) {
-            saveEventLocationHistory(eventTitle, lat, lng);
+        // 予定履歴に自動保存（チェックボックスなしで自動保存）
+        saveEventLocationHistory(eventTitle, lat, lng);
+        
+        // 定期予定のチェック
+        const isRecurring = localStorage.getItem('isRecurring') === 'true';
+        if (isRecurring) {
+            // 定期予定の場合、次週の予定を自動作成
+            const currentDeadline = new Date(eventDeadline);
+            const nextWeekDeadline = new Date(currentDeadline);
+            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7); // 1週間後
+            
+            // 次週の予定を作成
+            const nextWeekEvent = {
+                title: eventTitle,
+                deadline: nextWeekDeadline.toISOString().slice(0, 16), // datetime-local形式
+                lat: lat,
+                lng: lng,
+                money: setmoney,
+                isRecurring: true
+            };
+            
+            // 定期予定情報を保存（calendar.jsで処理）
+            const recurringEventsKey = `recurringEvents_${currentUserId}`;
+            let recurringEvents = JSON.parse(localStorage.getItem(recurringEventsKey) || '[]');
+            
+            // 既存の定期予定をチェック（同じタイトルの定期予定が既にある場合は更新）
+            const existingIndex = recurringEvents.findIndex(e => e.title === eventTitle);
+            if (existingIndex >= 0) {
+                recurringEvents[existingIndex] = nextWeekEvent;
+            } else {
+                recurringEvents.push(nextWeekEvent);
+            }
+            
+            localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
         }
         
         // チェック状態をクリア
-        localStorage.removeItem('saveToHistory');
+        localStorage.removeItem('isRecurring');
 
         console.log("保存されたデータ:", {
             lat: lat,

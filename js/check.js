@@ -302,9 +302,17 @@ function startWatchingPosition() {
                 window.currentLocationCircle.setCenter({lat: currentLat, lng: currentLng});
             }
             
-            // 距離を計算してチェック（クリア済みの場合は実行しない）
-            if (!window.cleared && !window.charged) {
-                calculateAndCheckDistance(currentLat, currentLng);
+            // 距離を計算してチェック（設定した日付・時刻に達した場合のみ）
+            // ただし、リアルタイムでの位置表示は継続
+            if (!window.cleared && !window.charged && !window.arrivalChecked) {
+                const now = new Date();
+                const targetTime = targetDate ? targetDate.getTime() : 0;
+                const currentTime = now.getTime();
+                
+                // 設定した日付・時刻に達した場合のみ判定を実行
+                if (targetTime > 0 && currentTime >= targetTime) {
+                    calculateAndCheckDistance(currentLat, currentLng);
+                }
             }
         },
         function(error) {
@@ -378,35 +386,63 @@ function updateTime() {
     const now = new Date();
     let diff = targetDate.getTime() - now.getTime();
 
-    if(diff <= 0) {
-        // クリア済みの場合は処理を停止
-        if(window.cleared) {
-            return;
+    // 設定した日付・時刻に達した場合、到着判定を実行
+    if (diff <= 0 && !window.arrivalChecked && !window.cleared && !window.charged) {
+        // 現在位置を取得して判定
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const nowLat = position.coords.latitude;
+                    const nowLng = position.coords.longitude;
+                    // 最後に取得した位置情報を保存
+                    window.lastKnownLat = nowLat;
+                    window.lastKnownLng = nowLng;
+                    calculateAndCheckDistance(nowLat, nowLng);
+                },
+                function(error) {
+                    console.warn("到着判定時の位置情報取得に失敗:", error.message);
+                    // 位置情報が取得できない場合でも判定を実行（最後に取得した位置情報を使用）
+                    if (window.lastKnownLat && window.lastKnownLng) {
+                        calculateAndCheckDistance(window.lastKnownLat, window.lastKnownLng);
+                    } else {
+                        // 位置情報が取得できない場合は時間切れとして処理
+                        if(!window.charged) {
+                            window.charged = true;
+                            window.arrivalChecked = true;
+                            
+                            // カウントダウンを停止
+                            if(TimeInterval) {
+                                clearInterval(TimeInterval);
+                                TimeInterval = null;
+                            }
+                            
+                            // 距離チェックを停止
+                            if(distanceCheckInterval) {
+                                clearInterval(distanceCheckInterval);
+                                distanceCheckInterval = null;
+                            }
+                            
+                            TimeElm.textContent = "時間切れ！！";
+                            TimeElm.style.color = "#FF0000";
+                            TimeElm.style.fontWeight = "bold";
+                            
+                            alert(`⏰ 時間切れ\n期日までに目的地に到着できませんでした。\n${money}円が課金されます。`);
+                            recordEventResult('failed', money, 0);
+                        }
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0 // 最新の位置情報を使用
+                }
+            );
         }
-        
-        // カウントダウンを停止
-        if(TimeInterval) {
-        clearInterval(TimeInterval);
-            TimeInterval = null;
-        }
-        
-        // 距離チェックを停止
-        if(distanceCheckInterval) {
-            clearInterval(distanceCheckInterval);
-            distanceCheckInterval = null;
-        }
-        
-        TimeElm.textContent = "時間切れ！！";
-        TimeElm.style.color = "#FF0000";
-        TimeElm.style.fontWeight = "bold";
-        
-        // 課金アラート（一度だけ表示）
-        if(!window.charged) {
-            window.charged = true;
-            alert(`⏰ 時間切れ！！\n${money}円が課金されました`);
-            // 予定の失敗を記録
-            recordEventResult('failed', money);
-        }
+        return;
+    }
+    
+    // 既に判定済みの場合は表示のみ更新
+    if (window.arrivalChecked || window.cleared || window.charged) {
         return;
     }
 
@@ -517,13 +553,36 @@ function calculateAndCheckDistance(nowLat, nowLng) {
         return;
     }
 
-            // Haversine 法で距離を計算（km単位）
-            const distance = 6371 * Math.acos(
-                Math.cos(targetLat*R) * Math.cos(nowLat*R) * Math.cos(nowLng*R - targetLng*R) +
-                Math.sin(targetLat*R) * Math.sin(nowLat*R)
-            );
+    // 設定した日付・時刻に達していない場合は判定をスキップ
+    if (!targetDate) {
+        return;
+    }
+    
+    const now = new Date();
+    const targetTime = targetDate.getTime();
+    const currentTime = now.getTime();
+    
+    // 設定した日付・時刻に達していない場合は判定をスキップ
+    if (currentTime < targetTime) {
+        return;
+    }
+    
+    // 設定した日付・時刻を過ぎた場合のみ判定を実行
+    // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
+    if (window.arrivalChecked) {
+        return;
+    }
 
-    // 100m以内に到達した場合
+    // Haversine 法で距離を計算（km単位）
+    const distance = 6371 * Math.acos(
+        Math.cos(targetLat*R) * Math.cos(nowLat*R) * Math.cos(nowLng*R - targetLng*R) +
+        Math.sin(targetLat*R) * Math.sin(nowLat*R)
+    );
+
+    // 判定済みフラグを設定（一度だけ判定を実行）
+    window.arrivalChecked = true;
+
+    // 100m以内に到達していた場合
     if(distance < 0.1) { // 0.1km = 100m
         // まずクリアフラグを設定（位置情報の更新を即座に停止）
         if(!window.cleared) {
@@ -548,14 +607,47 @@ function calculateAndCheckDistance(nowLat, nowLng) {
                 distanceCheckInterval = null;
             }
             
-                TimeElm.textContent = "クリア！！";
-                TimeElm.style.color = "#00AA00";
-                TimeElm.style.fontWeight = "bold";
-                
-                // クリアアラート（一度だけ表示）
-                    alert(`🎉 クリア！！\n目的地に到着しました！\n課金は免れました`);
+            TimeElm.textContent = "クリア！！";
+            TimeElm.style.color = "#00AA00";
+            TimeElm.style.fontWeight = "bold";
+            
+            // クリアアラート（一度だけ表示）
+            alert(`🎉 クリア！！\n目的地に到着しました！\n課金は免れました`);
             // 予定の成功を記録（設定されていた課金額を阻止額として保存）
             recordEventResult('completed', 0, money);
+        }
+    } else {
+        // 100m以内に到達していなかった場合（時間切れ）
+        if(!window.charged) {
+            window.charged = true;
+            
+            // watchPositionを停止
+            if(watchPositionId !== null) {
+                navigator.geolocation.clearWatch(watchPositionId);
+                watchPositionId = null;
+                console.log("check.js: 時間切れのため位置情報の監視を停止しました");
+            }
+            
+            // カウントダウンを停止
+            if(TimeInterval) {
+                clearInterval(TimeInterval);
+                TimeInterval = null;
+            }
+            
+            // 距離チェックを停止
+            if(distanceCheckInterval) {
+                clearInterval(distanceCheckInterval);
+                distanceCheckInterval = null;
+            }
+            
+            TimeElm.textContent = "時間切れ！！";
+            TimeElm.style.color = "#FF0000";
+            TimeElm.style.fontWeight = "bold";
+            
+            // 時間切れアラート
+            alert(`⏰ 時間切れ\n期日までに目的地に到着できませんでした。\n${money}円が課金されます。`);
+            // 予定の失敗を記録
+            recordEventResult('failed', money, 0);
         }
     }
 }

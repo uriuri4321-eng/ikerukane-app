@@ -287,8 +287,17 @@
         function showLoggedInButtons() {
             const loginArea = document.getElementById('loginButtonsArea');
             const loggedInArea = document.getElementById('loggedInButtonsArea');
+            const loginSection = document.getElementById('loginSection');
+            const registerLink = document.getElementById('registerLink');
+            const showLoginButton = document.getElementById('showLoginButton');
+            
             if (loginArea) loginArea.style.display = 'none';
             if (loggedInArea) loggedInArea.style.display = 'flex';
+            
+            // ログインセクションを閉じる
+            if (loginSection) loginSection.style.display = 'none';
+            if (registerLink) registerLink.style.display = 'block';
+            if (showLoginButton) showLoginButton.style.display = 'block';
         }
         
         // ログインボタンを表示（グローバルスコープ）

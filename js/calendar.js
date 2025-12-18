@@ -59,8 +59,82 @@ document.addEventListener('DOMContentLoaded', function() {
         await syncEventsFromFirestore();
         console.log('syncEventsFromFirestore完了');
         moveExpiredEvents();
+        checkAndCreateRecurringEvents(); // 定期予定のチェックと作成
         displayEvents();
         displayEventHistory();
+    }
+    
+    // 定期予定のチェックと作成
+    function checkAndCreateRecurringEvents() {
+        const recurringEventsKey = `recurringEvents_${currentUserId}`;
+        let recurringEvents = JSON.parse(localStorage.getItem(recurringEventsKey) || '[]');
+        
+        if (recurringEvents.length === 0) {
+            return;
+        }
+        
+        const now = new Date();
+        recurringEvents.forEach((recurringEvent, index) => {
+            const deadline = new Date(recurringEvent.deadline);
+            
+            // 期日が過ぎている場合、次週の予定を作成
+            if (deadline <= now) {
+                // 次週の日付を計算
+                const nextWeekDeadline = new Date(deadline);
+                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                
+                // 既に同じ予定が存在するかチェック
+                const existingEvent = savedEvents.find(e => 
+                    e.title === recurringEvent.title && 
+                    new Date(e.start).getTime() === nextWeekDeadline.getTime()
+                );
+                
+                if (!existingEvent) {
+                    // 新しい予定を作成
+                    const newEvent = {
+                        id: Date.now().toString() + '_' + index,
+                        firestoreId: null,
+                        userId: currentUserId,
+                        title: recurringEvent.title,
+                        start: nextWeekDeadline.toISOString(),
+                        end: nextWeekDeadline.toISOString(),
+                        allDay: false,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString(),
+                        status: 'active',
+                        lat: recurringEvent.lat,
+                        lng: recurringEvent.lng,
+                        money: recurringEvent.money,
+                        isRecurring: true
+                    };
+                    
+                    savedEvents.push(newEvent);
+                    
+                    // Firestoreに保存
+                    if (db && currentUserId) {
+                        const docRef = db.collection('events').doc();
+                        const firestorePayload = {
+                            ...newEvent,
+                            id: docRef.id,
+                            firestoreId: docRef.id,
+                            userId: currentUserId,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        };
+                        docRef.set(firestorePayload).catch(error => {
+                            console.error('定期予定のFirestore保存エラー:', error);
+                        });
+                    }
+                    
+                    // 定期予定の次回日付を更新
+                    recurringEvents[index].deadline = nextWeekDeadline.toISOString().slice(0, 16);
+                }
+            }
+        });
+        
+        // 更新した定期予定情報を保存
+        localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
+        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
     }
 
     async function syncEventsFromFirestore() {
@@ -380,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const title = titleInput.value.trim();
         const deadline = deadlineInput.value;
-        const saveToHistory = document.getElementById('saveToHistory').checked;
+        const isRecurring = document.getElementById('isRecurring').checked;
 
         if (!title || !deadline) {
             alert('タイトルと期日を入力してください。');
@@ -409,7 +483,8 @@ document.addEventListener('DOMContentLoaded', function() {
             status: 'active',
             lat: null,
             lng: null,
-            money: null
+            money: null,
+            isRecurring: isRecurring // 定期予定フラグ
         };
 
         if (db && currentUserId) {
@@ -437,7 +512,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // 最新の予定情報を保存（map.htmlで使用）
         localStorage.setItem('eventTitle', title);
         localStorage.setItem('eventDeadline', deadline);
-        localStorage.setItem('saveToHistory', saveToHistory ? 'true' : 'false');
+        localStorage.setItem('isRecurring', isRecurring ? 'true' : 'false');
         localStorage.setItem('selectedEventId', newEvent.firestoreId || newEvent.id);
 
         eventForm.style.display = 'none';
@@ -774,19 +849,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // ユーザーごとの予定履歴を取得（位置情報を含む）
-        // チェックボックスにチェックを入れた予定のみが履歴に保存される
+        // すべての予定が自動的に履歴に保存される
         const historyKey = `eventLocationHistory_${currentUserId}`;
         let eventHistory = JSON.parse(localStorage.getItem(historyKey) || '[]');
         
         if (eventHistory.length === 0) {
-            historyContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">履歴がありません</div>';
+            historyContainer.innerHTML = '<div style="color: #666; text-align: center; padding: 20px;">履歴がありません<br>予定を設定すると、ここに履歴が表示されます。</div>';
             return;
         }
         
         // 最後に使用された日時でソート（新しい順）
         eventHistory.sort((a, b) => {
-            const dateA = new Date(a.lastUsed);
-            const dateB = new Date(b.lastUsed);
+            const dateA = new Date(a.lastUsed || a.createdAt || 0);
+            const dateB = new Date(b.lastUsed || b.createdAt || 0);
             return dateB - dateA;
         });
         
@@ -815,17 +890,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 履歴から予定を再利用
     window.useHistory = function(title, lat, lng) {
         titleInput.value = title;
-        // 履歴から再利用する場合は、デフォルトで履歴に保存するチェックを外す
-        const saveToHistoryCheckbox = document.getElementById('saveToHistory');
-        if (saveToHistoryCheckbox) {
-            saveToHistoryCheckbox.checked = false;
-        }
         eventForm.style.display = 'block';
         titleInput.focus();
         deadlineInput.focus();
         
         // 位置情報がある場合は保存しておく（map.htmlで使用）
-        if (lat && lng) {
+        if (lat && lng && lat !== 'null' && lng !== 'null') {
             localStorage.setItem('savedHistoryLat', lat);
             localStorage.setItem('savedHistoryLng', lng);
             localStorage.setItem('savedHistoryTitle', title);
