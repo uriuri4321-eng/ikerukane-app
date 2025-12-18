@@ -1600,6 +1600,15 @@
           // クリックされたタブをアクティブにする
           this.classList.add('active');
           document.getElementById(targetTab + 'Tab').classList.add('active');
+          
+          // 履歴タブに切り替えた時に履歴を再表示
+          if (targetTab === 'history') {
+            if (typeof displayEventHistory === 'function') {
+              displayEventHistory();
+            } else if (window.displayEventHistory) {
+              window.displayEventHistory();
+            }
+          }
         });
       });
     });

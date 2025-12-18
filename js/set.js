@@ -335,34 +335,43 @@ window.addEventListener("load", () => {
         // 定期予定のチェック
         const isRecurring = localStorage.getItem('isRecurring') === 'true';
         if (isRecurring) {
-            // 定期予定の場合、次週の予定を自動作成
-            const currentDeadline = new Date(eventDeadline);
-            const nextWeekDeadline = new Date(currentDeadline);
-            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7); // 1週間後
-            
-            // 次週の予定を作成
-            const nextWeekEvent = {
-                title: eventTitle,
-                deadline: nextWeekDeadline.toISOString().slice(0, 16), // datetime-local形式
-                lat: lat,
-                lng: lng,
-                money: setmoney,
-                isRecurring: true
-            };
-            
-            // 定期予定情報を保存（calendar.jsで処理）
-            const recurringEventsKey = `recurringEvents_${currentUserId}`;
-            let recurringEvents = JSON.parse(localStorage.getItem(recurringEventsKey) || '[]');
-            
-            // 既存の定期予定をチェック（同じタイトルの定期予定が既にある場合は更新）
-            const existingIndex = recurringEvents.findIndex(e => e.title === eventTitle);
-            if (existingIndex >= 0) {
-                recurringEvents[existingIndex] = nextWeekEvent;
+            // currentUserIdを取得
+            const currentUserId = localStorage.getItem('currentUserId');
+            if (!currentUserId) {
+                console.warn('定期予定の設定にcurrentUserIdが必要です');
             } else {
-                recurringEvents.push(nextWeekEvent);
+                // 定期予定の場合、次週の予定を自動作成
+                const currentDeadline = new Date(eventDeadline);
+                const nextWeekDeadline = new Date(currentDeadline);
+                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7); // 1週間後
+                
+                // 次週の予定を作成（calendar.htmlに戻った時に自動的に作成されるように保存）
+                const nextWeekEvent = {
+                    title: eventTitle,
+                    deadline: nextWeekDeadline.toISOString().slice(0, 16), // datetime-local形式
+                    lat: lat,
+                    lng: lng,
+                    money: setmoney,
+                    isRecurring: true
+                };
+                
+                // 定期予定情報を保存（calendar.jsで処理）
+                const recurringEventsKey = `recurringEvents_${currentUserId}`;
+                let recurringEvents = JSON.parse(localStorage.getItem(recurringEventsKey) || '[]');
+                
+                // 既存の定期予定をチェック（同じタイトルの定期予定が既にある場合は更新）
+                const existingIndex = recurringEvents.findIndex(e => e.title === eventTitle);
+                if (existingIndex >= 0) {
+                    recurringEvents[existingIndex] = nextWeekEvent;
+                } else {
+                    recurringEvents.push(nextWeekEvent);
+                }
+                
+                localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
+                
+                // 次週の予定を即座に作成（calendar.htmlに戻った時に表示されるように）
+                createNextWeekEvent(nextWeekEvent, currentUserId);
             }
-            
-            localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
         }
         
         // チェック状態をクリア
@@ -467,5 +476,48 @@ function saveEventLocationHistory(eventTitle, lat, lng) {
     
     // ユーザーごとのlocalStorageに保存
     localStorage.setItem(historyKey, JSON.stringify(eventHistory));
+}
+
+// 次週の予定を即座に作成する関数
+function createNextWeekEvent(nextWeekEvent, currentUserId) {
+    const eventsKey = `events_${currentUserId}`;
+    let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+    
+    // 既に同じ予定が存在するかチェック
+    const nextWeekDeadline = new Date(nextWeekEvent.deadline);
+    const existingEvent = savedEvents.find(e => 
+        e.title === nextWeekEvent.title && 
+        Math.abs(new Date(e.start).getTime() - nextWeekDeadline.getTime()) < 60000 // 1分以内の誤差を許容
+    );
+    
+    if (!existingEvent) {
+        // 新しい予定を作成
+        const newEvent = {
+            id: Date.now().toString() + '_recurring_' + Math.random().toString(36).substr(2, 9),
+            firestoreId: null,
+            userId: currentUserId,
+            title: nextWeekEvent.title,
+            start: nextWeekDeadline.toISOString(),
+            end: nextWeekDeadline.toISOString(),
+            allDay: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            status: 'active',
+            lat: nextWeekEvent.lat,
+            lng: nextWeekEvent.lng,
+            money: nextWeekEvent.money,
+            isRecurring: true
+        };
+        
+        savedEvents.push(newEvent);
+        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        
+        // Firestoreに保存（dbが利用可能な場合）
+        // calendar.htmlでFirestoreに保存されるため、ここではlocalStorageのみに保存
+        console.log('次週の予定を作成しました（localStorage）:', newEvent);
+        console.log('calendar.htmlに戻った時にFirestoreに同期されます');
+    } else {
+        console.log('次週の予定は既に存在します:', existingEvent);
+    }
 }
 

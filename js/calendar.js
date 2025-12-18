@@ -74,6 +74,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const now = new Date();
+        let hasUpdates = false;
+        
         recurringEvents.forEach((recurringEvent, index) => {
             const deadline = new Date(recurringEvent.deadline);
             
@@ -86,13 +88,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 既に同じ予定が存在するかチェック
                 const existingEvent = savedEvents.find(e => 
                     e.title === recurringEvent.title && 
-                    new Date(e.start).getTime() === nextWeekDeadline.getTime()
+                    Math.abs(new Date(e.start).getTime() - nextWeekDeadline.getTime()) < 60000 // 1分以内の誤差を許容
                 );
                 
                 if (!existingEvent) {
                     // 新しい予定を作成
                     const newEvent = {
-                        id: Date.now().toString() + '_' + index,
+                        id: Date.now().toString() + '_' + index + '_' + Math.random().toString(36).substr(2, 9),
                         firestoreId: null,
                         userId: currentUserId,
                         title: recurringEvent.title,
@@ -109,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     };
                     
                     savedEvents.push(newEvent);
+                    hasUpdates = true;
                     
                     // Firestoreに保存
                     if (db && currentUserId) {
@@ -126,15 +129,20 @@ document.addEventListener('DOMContentLoaded', function() {
                         });
                     }
                     
-                    // 定期予定の次回日付を更新
-                    recurringEvents[index].deadline = nextWeekDeadline.toISOString().slice(0, 16);
+                    console.log('定期予定から次週の予定を作成しました:', newEvent);
                 }
+                
+                // 定期予定の次回日付を更新
+                recurringEvents[index].deadline = nextWeekDeadline.toISOString().slice(0, 16);
+                hasUpdates = true;
             }
         });
         
         // 更新した定期予定情報を保存
-        localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
-        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        if (hasUpdates) {
+            localStorage.setItem(recurringEventsKey, JSON.stringify(recurringEvents));
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+        }
     }
 
     async function syncEventsFromFirestore() {
@@ -836,10 +844,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
     
-    // 予定履歴の表示
+    // 予定履歴の表示（グローバルスコープにも公開）
     function displayEventHistory() {
         const historyContainer = document.getElementById('eventHistoryContainer');
-        if (!historyContainer) return;
+        if (!historyContainer) {
+            console.warn('eventHistoryContainerが見つかりません');
+            return;
+        }
         
         // 現在のユーザーIDを取得
         const currentUserId = localStorage.getItem('currentUserId');
@@ -887,8 +898,55 @@ document.addEventListener('DOMContentLoaded', function() {
         historyContainer.innerHTML = html;
     }
     
+    // グローバルスコープに公開
+    window.displayEventHistory = displayEventHistory;
+    
     // 履歴から予定を再利用
     window.useHistory = function(title, lat, lng) {
+        console.log('useHistory called:', { title, lat, lng });
+        
+        // titleInputとdeadlineInputが存在するか確認
+        if (!titleInput) {
+            console.error('titleInputが見つかりません');
+            alert('予定入力フォームが見つかりません。ページを再読み込みしてください。');
+            return;
+        }
+        
+        titleInput.value = title;
+        eventForm.style.display = 'block';
+        titleInput.focus();
+        
+        // deadlineInputが存在する場合はフォーカス
+        if (deadlineInput) {
+            deadlineInput.focus();
+        }
+        
+        // 位置情報がある場合は保存しておく（map.htmlで使用）
+        if (lat && lng && lat !== 'null' && lng !== 'null') {
+            localStorage.setItem('savedHistoryLat', lat);
+            localStorage.setItem('savedHistoryLng', lng);
+            localStorage.setItem('savedHistoryTitle', title);
+            console.log('位置情報を保存しました:', { lat, lng, title });
+        } else {
+            localStorage.removeItem('savedHistoryLat');
+            localStorage.removeItem('savedHistoryLng');
+            localStorage.removeItem('savedHistoryTitle');
+            console.log('位置情報なし');
+        }
+        
+        // 予定管理タブに切り替える
+        const calendarTab = document.getElementById('calendarTab');
+        const historyTab = document.getElementById('historyTab');
+        const calendarTabButton = document.querySelector('.tab-button[data-tab="calendar"]');
+        const historyTabButton = document.querySelector('.tab-button[data-tab="history"]');
+        
+        if (calendarTab && historyTab && calendarTabButton && historyTabButton) {
+            historyTab.classList.remove('active');
+            calendarTab.classList.add('active');
+            historyTabButton.classList.remove('active');
+            calendarTabButton.classList.add('active');
+        }
+    };
         titleInput.value = title;
         eventForm.style.display = 'block';
         titleInput.focus();
