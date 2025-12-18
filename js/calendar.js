@@ -465,15 +465,26 @@ document.addEventListener('DOMContentLoaded', function() {
     displayEventHistory();
 
     // 予約設定ボタンのクリックイベント
-    reserveBtn.addEventListener('click', function() {
-        eventForm.style.display = 'block';
-        titleInput.value = '';
-        deadlineInput.value = '';
-        titleInput.focus();
-    });
+    if (reserveBtn) {
+        reserveBtn.addEventListener('click', function() {
+            if (eventForm) {
+                eventForm.style.display = 'block';
+            }
+            if (titleInput) {
+                titleInput.value = '';
+                titleInput.focus();
+            }
+            if (deadlineInput) {
+                deadlineInput.value = '';
+            }
+        });
+    } else {
+        console.error('予定設定ボタン（reserveBtn）が見つかりません');
+    }
 
     // 保存ボタンのクリックイベント
-    saveBtn.addEventListener('click', async function() {
+    if (saveBtn) {
+        saveBtn.addEventListener('click', async function() {
         await dataReadyPromise;
 
         const title = titleInput.value.trim();
@@ -544,12 +555,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         alert(`予定「${title}」を設定しました。\n次に目的地を設定してください。`);
         window.location.href = 'map.html';
-    });
+        });
+    } else {
+        console.error('保存ボタン（saveBtn）が見つかりません');
+    }
 
     // キャンセルボタンのクリックイベント
-    cancelBtn.addEventListener('click', function() {
-        eventForm.style.display = 'none';
-    });
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            if (eventForm) {
+                eventForm.style.display = 'none';
+            }
+        });
+    } else {
+        console.error('キャンセルボタン（cancelBtn）が見つかりません');
+    }
 
     // 現在の予定一覧の表示
     function displayEvents() {
