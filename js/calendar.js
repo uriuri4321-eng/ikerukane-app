@@ -697,7 +697,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         
                         // Firestoreに位置情報や課金額がない場合、localStorageから取得を試行
-                        if ((!event.lat || !event.lng || event.money == null) && !firestoreData.lat && !firestoreData.lng && firestoreData.money == null) {
+                        const needsLocation = !event.lat || !event.lng || isNaN(event.lat) || isNaN(event.lng) || event.lat === 0 || event.lng === 0;
+                        const needsMoney = event.money == null || event.money === undefined || isNaN(event.money) || event.money <= 0;
+                        const firestoreNeedsLocation = !firestoreData.lat || !firestoreData.lng || isNaN(firestoreData.lat) || isNaN(firestoreData.lng) || firestoreData.lat === 0 || firestoreData.lng === 0;
+                        const firestoreNeedsMoney = firestoreData.money == null || firestoreData.money === undefined || isNaN(firestoreData.money) || firestoreData.money <= 0;
+                        
+                        if ((needsLocation || needsMoney) && (firestoreNeedsLocation || firestoreNeedsMoney)) {
                             console.log('Firestoreに位置情報がないため、localStorageから取得を試行');
                             const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
                             const localEvent = localEvents.find(e => 
@@ -708,21 +713,25 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             if (localEvent) {
                                 console.log('localStorageから見つかった予定:', localEvent);
-                                if (localEvent.lat != null && !event.lat) {
+                                if (localEvent.lat != null && localEvent.lat !== undefined && !isNaN(localEvent.lat) && localEvent.lat !== 0 && needsLocation) {
                                     event.lat = localEvent.lat;
                                     console.log('localStorageからlatを取得:', localEvent.lat);
                                 }
-                                if (localEvent.lng != null && !event.lng) {
+                                if (localEvent.lng != null && localEvent.lng !== undefined && !isNaN(localEvent.lng) && localEvent.lng !== 0 && needsLocation) {
                                     event.lng = localEvent.lng;
                                     console.log('localStorageからlngを取得:', localEvent.lng);
                                 }
-                                if (localEvent.money != null && event.money == null) {
+                                if (localEvent.money != null && localEvent.money !== undefined && !isNaN(localEvent.money) && localEvent.money > 0 && needsMoney) {
                                     event.money = localEvent.money;
                                     console.log('localStorageからmoneyを取得:', localEvent.money);
                                 }
                                 
                                 // localStorageに位置情報がある場合、Firestoreにも保存
-                                if (localEvent.lat != null && localEvent.lng != null && localEvent.money != null) {
+                                const hasValidLocation = localEvent.lat != null && localEvent.lat !== undefined && !isNaN(localEvent.lat) && localEvent.lat !== 0 &&
+                                                       localEvent.lng != null && localEvent.lng !== undefined && !isNaN(localEvent.lng) && localEvent.lng !== 0;
+                                const hasValidMoney = localEvent.money != null && localEvent.money !== undefined && !isNaN(localEvent.money) && localEvent.money > 0;
+                                
+                                if (hasValidLocation && hasValidMoney) {
                                     console.log('Firestoreに位置情報を保存します');
                                     const updateData = {
                                         lat: localEvent.lat,
@@ -816,17 +825,95 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('selectedEventId', getEventDocId(event) || '');
             
             // 位置情報と課金額が設定されているか確認
-            // lat, lngが存在し、moneyがnullでもundefinedでもない（0は有効）
-            const hasLocation = event.lat != null && event.lng != null;
-            const hasMoney = event.money != null && event.money !== undefined;
+            // lat, lngが有効な数値で、moneyがnullでもundefinedでもない（0は有効）
+            const hasLocation = event.lat != null && 
+                               event.lat !== undefined && 
+                               !isNaN(event.lat) &&
+                               event.lat !== 0 &&
+                               event.lng != null && 
+                               event.lng !== undefined && 
+                               !isNaN(event.lng) &&
+                               event.lng !== 0;
+            const hasMoney = event.money != null && 
+                            event.money !== undefined && 
+                            !isNaN(event.money) &&
+                            event.money > 0;
             
             console.log('位置情報と課金額の確認:', {
                 hasLocation: hasLocation,
                 lat: event.lat,
                 lng: event.lng,
                 hasMoney: hasMoney,
-                money: event.money
+                money: event.money,
+                eventData: event
             });
+            
+            // 位置情報が取得できていない場合、もう一度localStorageから取得を試行
+            if (!hasLocation || !hasMoney) {
+                console.log('位置情報が不足しているため、localStorageから再取得を試行します');
+                const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+                const localEvent = localEvents.find(e => 
+                    (e.id == eventId || e.firestoreId === eventId) &&
+                    e.title === event.title
+                );
+                
+                if (localEvent) {
+                    console.log('localStorageから再取得したイベント:', localEvent);
+                    if (localEvent.lat != null && localEvent.lat !== undefined && !isNaN(localEvent.lat) && localEvent.lat !== 0) {
+                        event.lat = localEvent.lat;
+                        console.log('latを再取得:', localEvent.lat);
+                    }
+                    if (localEvent.lng != null && localEvent.lng !== undefined && !isNaN(localEvent.lng) && localEvent.lng !== 0) {
+                        event.lng = localEvent.lng;
+                        console.log('lngを再取得:', localEvent.lng);
+                    }
+                    if (localEvent.money != null && localEvent.money !== undefined && !isNaN(localEvent.money) && localEvent.money > 0) {
+                        event.money = localEvent.money;
+                        console.log('moneyを再取得:', localEvent.money);
+                    }
+                    
+                    // 再チェック
+                    const hasLocationAfter = event.lat != null && 
+                                           event.lat !== undefined && 
+                                           !isNaN(event.lat) &&
+                                           event.lat !== 0 &&
+                                           event.lng != null && 
+                                           event.lng !== undefined && 
+                                           !isNaN(event.lng) &&
+                                           event.lng !== 0;
+                    const hasMoneyAfter = event.money != null && 
+                                        event.money !== undefined && 
+                                        !isNaN(event.money) &&
+                                        event.money > 0;
+                    
+                    console.log('再取得後の位置情報と課金額の確認:', {
+                        hasLocation: hasLocationAfter,
+                        lat: event.lat,
+                        lng: event.lng,
+                        hasMoney: hasMoneyAfter,
+                        money: event.money
+                    });
+                    
+                    if (hasLocationAfter && hasMoneyAfter) {
+                        // 位置情報と課金額が取得できた場合、check.htmlに遷移
+                        localStorage.setItem('Lat', event.lat);
+                        localStorage.setItem('Lng', event.lng);
+                        localStorage.setItem('money', event.money);
+                        localStorage.setItem('date', event.start);
+                        
+                        console.log('予定情報をcheck.htmlに渡します（再取得後）:', {
+                            title: event.title,
+                            lat: event.lat,
+                            lng: event.lng,
+                            money: event.money,
+                            date: event.start
+                        });
+                        
+                        window.location.href = 'check.html';
+                        return;
+                    }
+                }
+            }
             
             if (hasLocation && hasMoney) {
                 // 位置情報と課金額が設定されている場合は、check.htmlに直接遷移
@@ -851,7 +938,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     lng: event.lng,
                     money: event.money,
                     hasLocation: hasLocation,
-                    hasMoney: hasMoney
+                    hasMoney: hasMoney,
+                    eventData: event
                 });
                 alert(`予定「${event.title}」の目的地が設定されていません。\n目的地を設定してください。`);
                 window.location.href = 'map.html';
