@@ -643,6 +643,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.selectEvent = async function(eventId) {
         await dataReadyPromise;
 
+        // 最新のデータを再取得（位置情報が更新されている可能性があるため）
+        await syncEventsFromFirestore();
+        savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
+        
         let event = savedEvents.find(e => e.id == eventId || e.firestoreId === eventId);
         console.log('savedEventsから検索:', {
             eventId: eventId,
@@ -853,8 +857,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('位置情報が不足しているため、localStorageから再取得を試行します');
                 const localEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
                 const localEvent = localEvents.find(e => 
-                    (e.id == eventId || e.firestoreId === eventId) &&
-                    e.title === event.title
+                    (e.id == eventId || e.firestoreId === eventId || e.firestoreId === getEventDocId(event)) &&
+                    (e.title === event.title || e.start === event.start)
                 );
                 
                 if (localEvent) {
@@ -870,6 +874,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (localEvent.money != null && localEvent.money !== undefined && !isNaN(localEvent.money) && localEvent.money > 0) {
                         event.money = localEvent.money;
                         console.log('moneyを再取得:', localEvent.money);
+                    }
+                    
+                    // Firestoreにも位置情報を保存（同期）
+                    if (db && currentUserId && (event.lat || event.lng || event.money)) {
+                        const docId = getEventDocId(event);
+                        if (docId) {
+                            try {
+                                const updateData = {};
+                                if (event.lat != null && event.lat !== undefined && !isNaN(event.lat) && event.lat !== 0) {
+                                    updateData.lat = event.lat;
+                                }
+                                if (event.lng != null && event.lng !== undefined && !isNaN(event.lng) && event.lng !== 0) {
+                                    updateData.lng = event.lng;
+                                }
+                                if (event.money != null && event.money !== undefined && !isNaN(event.money) && event.money > 0) {
+                                    updateData.money = event.money;
+                                }
+                                if (Object.keys(updateData).length > 0) {
+                                    if (firebase && firebase.firestore && firebase.firestore.FieldValue) {
+                                        updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                                    }
+                                    await db.collection('events').doc(docId).update(updateData);
+                                    console.log('Firestoreに位置情報を同期しました');
+                                }
+                            } catch (error) {
+                                console.error('Firestoreへの位置情報同期エラー:', error);
+                            }
+                        }
                     }
                     
                     // 再チェック
