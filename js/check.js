@@ -310,12 +310,22 @@ function startWatchingPosition() {
                 const targetTime = targetDate ? targetDate.getTime() : 0;
                 const currentTime = now.getTime();
                 
-                // 設定した日付・時刻に達した場合のみ判定を実行
-                // ただし、updateTime関数で既に判定が実行されている場合はスキップ
-                if (targetTime > 0 && currentTime >= targetTime && !window.arrivalChecked) {
-                    // arrivalCheckedフラグを設定（重複実行を防ぐ）
-                    window.arrivalChecked = true;
-                    calculateAndCheckDistance(currentLat, currentLng);
+                // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
+                if (targetDate && targetTime > 0 && currentTime >= targetTime && !window.arrivalChecked) {
+                    const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+                    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    
+                    // 当日で、かつ期日の時刻に達した場合のみ判定を実行
+                    if (targetDateOnly.getTime() === nowDateOnly.getTime()) {
+                        // arrivalCheckedフラグを設定（重複実行を防ぐ）
+                        window.arrivalChecked = true;
+                        calculateAndCheckDistance(currentLat, currentLng);
+                    } else {
+                        console.log("check.js: 当日ではないため判定をスキップします", {
+                            targetDate: targetDateOnly.toLocaleDateString('ja-JP'),
+                            currentDate: nowDateOnly.toLocaleDateString('ja-JP')
+                        });
+                    }
                 }
             }
         },
@@ -392,7 +402,12 @@ function updateTime() {
 
     // 設定した日付・時刻に達した場合、到着判定を実行
     // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
-    if (diff <= 0 && !window.arrivalChecked && !window.cleared && !window.charged) {
+    // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
+    const targetDateOnly = targetDate ? new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()) : null;
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const isToday = targetDateOnly && targetDateOnly.getTime() === nowDateOnly.getTime();
+    
+    if (diff <= 0 && !window.arrivalChecked && !window.cleared && !window.charged && isToday) {
         // 判定済みフラグを先に設定（重複実行を防ぐ）
         window.arrivalChecked = true;
         
@@ -601,6 +616,19 @@ function calculateAndCheckDistance(nowLat, nowLng) {
     
     // 設定した日付・時刻に達していない場合は判定をスキップ
     if (currentTime < targetTime) {
+        return;
+    }
+    
+    // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
+    const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // 当日でない場合は判定をスキップ（当日になったら正常に判定できるようにする）
+    if (targetDateOnly.getTime() !== nowDateOnly.getTime()) {
+        console.log("check.js: 当日ではないため判定をスキップします", {
+            targetDate: targetDateOnly.toLocaleDateString('ja-JP'),
+            currentDate: nowDateOnly.toLocaleDateString('ja-JP')
+        });
         return;
     }
     
