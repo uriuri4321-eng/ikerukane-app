@@ -240,7 +240,7 @@ window.addEventListener("load", () => {
         console.error("決定ボタンが見つかりません");
         return;
     }
-    sendbutton.onclick = function() {
+    sendbutton.onclick = async function() {
         const setmoney = Number(document.querySelector(".setmoney").value);
         const now = new Date();
         const setdateObj = new Date(eventDeadline);
@@ -267,64 +267,144 @@ window.addEventListener("load", () => {
         if (currentUserId) {
             const eventsKey = `events_${currentUserId}`;
             let savedEvents = JSON.parse(localStorage.getItem(eventsKey) || '[]');
-            const eventIndex = savedEvents.findIndex(e => 
-                e.title === eventTitle && e.start === eventDeadline
-            );
+            
+            // 複数の条件で予定を検索（title + start、またはselectedEventId）
+            let eventIndex = -1;
+            if (selectedEventId) {
+                eventIndex = savedEvents.findIndex(e => 
+                    (e.firestoreId === selectedEventId || e.id === selectedEventId)
+                );
+            }
+            if (eventIndex === -1) {
+                eventIndex = savedEvents.findIndex(e => 
+                    e.title === eventTitle && e.start === eventDeadline
+                );
+            }
+            
+            // localStorageに保存
             if (eventIndex !== -1) {
                 savedEvents[eventIndex].lat = lat;
                 savedEvents[eventIndex].lng = lng;
                 savedEvents[eventIndex].money = setmoney;
+                if (selectedEventId && !savedEvents[eventIndex].firestoreId) {
+                    savedEvents[eventIndex].firestoreId = selectedEventId;
+                }
                 localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
-                
-                // Firestoreにも更新を反映
-                if (typeof db !== 'undefined' && db) {
-                    const updateData = {
-                        lat: lat,
-                        lng: lng,
-                        money: setmoney
-                    };
+                console.log('localStorageに位置情報を保存しました:', {
+                    title: eventTitle,
+                    lat: lat,
+                    lng: lng,
+                    money: setmoney,
+                    eventIndex: eventIndex
+                });
+            } else {
+                console.warn('localStorageで予定が見つかりませんでした。Firestoreから直接更新を試行します。');
+            }
+            
+            // Firestoreにも更新を反映（確実に保存するため）
+            if (typeof db !== 'undefined' && db) {
+                const updateData = {
+                    lat: lat,
+                    lng: lng,
+                    money: setmoney
+                };
 
-                    if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
-                        updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                if (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue) {
+                    updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                }
+
+                const applyUpdate = async (docRef, docIdLabel) => {
+                    try {
+                        await docRef.update(updateData);
+                        console.log('Firestoreの予定を更新しました:', docIdLabel);
+                        return true;
+                    } catch (error) {
+                        console.error('Firestoreの予定更新エラー:', error);
+                        return false;
                     }
+                };
 
-                    const applyUpdate = (docRef, docIdLabel) => {
-                        return docRef.update(updateData)
-                            .then(() => {
-                                console.log('Firestoreの予定を更新しました:', docIdLabel);
-                            });
-                    };
-
-                    const fallbackUpdate = () => {
-                        db.collection('events')
-                            .where('userId', '==', currentUserId)
-                            .where('title', '==', eventTitle)
-                            .where('start', '==', eventDeadline)
-                            .where('status', '==', 'active')
-                            .limit(1)
-                            .get()
-                            .then((querySnapshot) => {
-                                if (!querySnapshot.empty) {
-                                    const doc = querySnapshot.docs[0];
-                                    applyUpdate(doc.ref, doc.id).catch((error) => {
-                                        console.error('Firestoreの予定更新エラー:', error);
-                                    });
+                const fallbackUpdate = async () => {
+                    try {
+                        // まずselectedEventIdで検索
+                        let querySnapshot = null;
+                        if (selectedEventId) {
+                            try {
+                                const doc = await db.collection('events').doc(selectedEventId).get();
+                                if (doc.exists) {
+                                    querySnapshot = { docs: [doc], empty: false };
                                 }
-                            })
-                            .catch((error) => {
-                                console.error('Firestoreからの予定検索エラー:', error);
-                            });
-                    };
-
-                    if (selectedEventId) {
-                        applyUpdate(db.collection('events').doc(selectedEventId), selectedEventId)
-                            .catch((error) => {
-                                console.error('Firestoreの予定更新エラー:', error);
-                                fallbackUpdate();
-                            });
-                    } else {
-                        fallbackUpdate();
+                            } catch (error) {
+                                console.warn('selectedEventIdでの検索に失敗:', error);
+                            }
+                        }
+                        
+                        // selectedEventIdで見つからない場合、条件で検索
+                        if (!querySnapshot || querySnapshot.empty) {
+                            querySnapshot = await db.collection('events')
+                                .where('userId', '==', currentUserId)
+                                .where('title', '==', eventTitle)
+                                .where('start', '==', eventDeadline)
+                                .where('status', '==', 'active')
+                                .limit(1)
+                                .get();
+                        }
+                        
+                        if (!querySnapshot.empty) {
+                            const doc = querySnapshot.docs[0];
+                            const success = await applyUpdate(doc.ref, doc.id);
+                            if (success) {
+                                // 成功した場合、localStorageも更新
+                                let foundEvent = savedEvents.find(e => 
+                                    e.firestoreId === doc.id || e.id === doc.id
+                                );
+                                if (!foundEvent) {
+                                    foundEvent = savedEvents.find(e => 
+                                        e.title === eventTitle && e.start === eventDeadline
+                                    );
+                                }
+                                if (foundEvent) {
+                                    foundEvent.lat = lat;
+                                    foundEvent.lng = lng;
+                                    foundEvent.money = setmoney;
+                                    foundEvent.firestoreId = doc.id;
+                                    localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+                                    console.log('Firestore更新成功後、localStorageも更新しました');
+                                } else {
+                                    // localStorageに予定がない場合でも、位置情報を保存
+                                    console.log('localStorageに予定がないため、位置情報のみ保存します');
+                                }
+                            }
+                        } else {
+                            console.warn('Firestoreで予定が見つかりませんでした');
+                        }
+                    } catch (error) {
+                        console.error('Firestoreからの予定検索エラー:', error);
                     }
+                };
+
+                // selectedEventIdがある場合はそれを優先
+                if (selectedEventId) {
+                    const success = await applyUpdate(db.collection('events').doc(selectedEventId), selectedEventId);
+                    if (!success) {
+                        await fallbackUpdate();
+                    } else {
+                        // 成功した場合、localStorageも更新
+                        const foundEvent = savedEvents.find(e => 
+                            (e.firestoreId === selectedEventId || e.id === selectedEventId) &&
+                            e.title === eventTitle
+                        );
+                        if (foundEvent) {
+                            foundEvent.lat = lat;
+                            foundEvent.lng = lng;
+                            foundEvent.money = setmoney;
+                            foundEvent.firestoreId = selectedEventId;
+                            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+                            console.log('Firestore更新成功後、localStorageも更新しました');
+                        }
+                    }
+                } else {
+                    await fallbackUpdate();
                 }
             }
         }

@@ -756,6 +756,21 @@ document.addEventListener('DOMContentLoaded', function() {
                             lng: event.lng,
                             money: event.money
                         });
+                        
+                        // Firestoreから取得した最新データをsavedEventsにも反映
+                        const eventIndex = savedEvents.findIndex(e => 
+                            (e.id == eventId || e.firestoreId === eventId || e.firestoreId === docId) &&
+                            e.title === event.title &&
+                            e.start === event.start
+                        );
+                        if (eventIndex !== -1) {
+                            savedEvents[eventIndex].lat = event.lat;
+                            savedEvents[eventIndex].lng = event.lng;
+                            savedEvents[eventIndex].money = event.money;
+                            savedEvents[eventIndex].firestoreId = docId;
+                            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+                            console.log('savedEventsを更新しました');
+                        }
                     } else {
                         console.warn('Firestoreにドキュメントが存在しません:', docId);
                         // Firestoreに存在しない場合、localStorageから取得
