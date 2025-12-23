@@ -302,29 +302,30 @@ function startWatchingPosition() {
                 window.currentLocationCircle.setCenter({lat: currentLat, lng: currentLng});
             }
             
-            // 距離を計算してチェック（設定した日付・時刻に達した場合のみ）
+            // 距離を計算してチェック（期日の24時間前から判定を開始）
             // ただし、リアルタイムでの位置表示は継続
-            // updateTime関数で既に判定が実行されている場合はスキップ
             if (!window.cleared && !window.charged) {
                 const now = new Date();
                 const targetTime = targetDate ? targetDate.getTime() : 0;
                 const currentTime = now.getTime();
                 
-                // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
-                if (targetDate && targetTime > 0 && currentTime >= targetTime && !window.arrivalChecked) {
+                // 期日の24時間前（86400000ミリ秒 = 24時間）から判定を開始
+                const checkStartTime = targetTime - (24 * 60 * 60 * 1000);
+                
+                // 24時間前から期日までの間、継続的に判定を実行
+                if (targetDate && targetTime > 0 && currentTime >= checkStartTime && currentTime <= targetTime) {
+                    // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
                     const targetDateOnly = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
                     const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                     
-                    // 当日で、かつ期日の時刻に達した場合のみ判定を実行
+                    // 当日の場合のみ判定を実行
                     if (targetDateOnly.getTime() === nowDateOnly.getTime()) {
-                        // arrivalCheckedフラグを設定（重複実行を防ぐ）
-                        window.arrivalChecked = true;
                         calculateAndCheckDistance(currentLat, currentLng);
-                    } else {
-                        console.log("check.js: 当日ではないため判定をスキップします", {
-                            targetDate: targetDateOnly.toLocaleDateString('ja-JP'),
-                            currentDate: nowDateOnly.toLocaleDateString('ja-JP')
-                        });
+                    }
+                } else if (targetDate && targetTime > 0 && currentTime > targetTime) {
+                    // 期日を過ぎた場合、まだクリアしていなければ失敗判定
+                    if (!window.cleared && !window.charged) {
+                        calculateAndCheckDistance(currentLat, currentLng);
                     }
                 }
             }
@@ -400,17 +401,20 @@ function updateTime() {
     const now = new Date();
     let diff = targetDate.getTime() - now.getTime();
 
-    // 設定した日付・時刻に達した場合、到着判定を実行
-    // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
+    // 期日の24時間前から判定を開始
+    // 期日を過ぎた場合、まだクリアしていなければ失敗判定
+    const targetTime = targetDate ? targetDate.getTime() : 0;
+    const currentTime = now.getTime();
+    const checkStartTime = targetTime - (24 * 60 * 60 * 1000); // 24時間前
+    const isWithinCheckPeriod = targetTime > 0 && currentTime >= checkStartTime;
+    
     // 当日チェック：期日の日付と現在の日付が同じ日であることを確認
     const targetDateOnly = targetDate ? new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate()) : null;
     const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const isToday = targetDateOnly && targetDateOnly.getTime() === nowDateOnly.getTime();
     
-    if (diff <= 0 && !window.arrivalChecked && !window.cleared && !window.charged && isToday) {
-        // 判定済みフラグを先に設定（重複実行を防ぐ）
-        window.arrivalChecked = true;
-        
+    // 24時間前から期日までの間、または期日を過ぎた場合に判定を実行
+    if (isWithinCheckPeriod && !window.cleared && !window.charged && isToday) {
         // 現在位置を取得して判定
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -423,37 +427,37 @@ function updateTime() {
                     // 判定を実行（arrivalCheckedフラグは既に設定済み）
                     calculateAndCheckDistance(nowLat, nowLng);
                 },
-                function(error) {
-                    console.warn("到着判定時の位置情報取得に失敗:", error.message);
-                    // 位置情報が取得できない場合でも判定を実行（最後に取得した位置情報を使用）
-                    if (window.lastKnownLat && window.lastKnownLng) {
-                        calculateAndCheckDistance(window.lastKnownLat, window.lastKnownLng);
-                    } else {
-                        // 位置情報が取得できない場合は時間切れとして処理
-                        if(!window.charged) {
-                            window.charged = true;
-                            
-                            // カウントダウンを停止
-                            if(TimeInterval) {
-                                clearInterval(TimeInterval);
-                                TimeInterval = null;
+                    function(error) {
+                        console.warn("到着判定時の位置情報取得に失敗:", error.message);
+                        // 位置情報が取得できない場合でも判定を実行（最後に取得した位置情報を使用）
+                        if (window.lastKnownLat && window.lastKnownLng) {
+                            calculateAndCheckDistance(window.lastKnownLat, window.lastKnownLng);
+                        } else if (currentTime > targetTime) {
+                            // 期日を過ぎていて、位置情報が取得できない場合は時間切れとして処理
+                            if(!window.charged && !window.cleared) {
+                                window.charged = true;
+                                
+                                // カウントダウンを停止
+                                if(TimeInterval) {
+                                    clearInterval(TimeInterval);
+                                    TimeInterval = null;
+                                }
+                                
+                                // 距離チェックを停止
+                                if(distanceCheckInterval) {
+                                    clearInterval(distanceCheckInterval);
+                                    distanceCheckInterval = null;
+                                }
+                                
+                                TimeElm.textContent = "時間切れ！！";
+                                TimeElm.style.color = "#FF0000";
+                                TimeElm.style.fontWeight = "bold";
+                                
+                                alert(`⏰ 時間切れ\n期日までに目的地に到着できませんでした。\n${money}円が課金されます。`);
+                                recordEventResult('failed', money, 0);
                             }
-                            
-                            // 距離チェックを停止
-                            if(distanceCheckInterval) {
-                                clearInterval(distanceCheckInterval);
-                                distanceCheckInterval = null;
-                            }
-                            
-                            TimeElm.textContent = "時間切れ！！";
-                            TimeElm.style.color = "#FF0000";
-                            TimeElm.style.fontWeight = "bold";
-                            
-                            alert(`⏰ 時間切れ\n期日までに目的地に到着できませんでした。\n${money}円が課金されます。`);
-                            recordEventResult('failed', money, 0);
                         }
-                    }
-                },
+                    },
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
@@ -464,9 +468,9 @@ function updateTime() {
             // 位置情報APIが利用できない場合
             if (window.lastKnownLat && window.lastKnownLng) {
                 calculateAndCheckDistance(window.lastKnownLat, window.lastKnownLng);
-            } else {
-                // 位置情報が取得できない場合は時間切れとして処理
-                if(!window.charged) {
+            } else if (currentTime > targetTime) {
+                // 期日を過ぎていて、位置情報が取得できない場合は時間切れとして処理
+                if(!window.charged && !window.cleared) {
                     window.charged = true;
                     
                     // カウントダウンを停止
@@ -490,7 +494,6 @@ function updateTime() {
                 }
             }
         }
-        return;
     }
     
     // 既に判定済みの場合は表示のみ更新
@@ -614,8 +617,12 @@ function calculateAndCheckDistance(nowLat, nowLng) {
     const targetTime = targetDate.getTime();
     const currentTime = now.getTime();
     
-    // 設定した日付・時刻に達していない場合は判定をスキップ
-    if (currentTime < targetTime) {
+    // 期日の24時間前（86400000ミリ秒 = 24時間）から判定を開始
+    const checkStartTime = targetTime - (24 * 60 * 60 * 1000);
+    
+    // 24時間前から期日までの間、または期日を過ぎた場合のみ判定を実行
+    if (currentTime < checkStartTime) {
+        // まだ24時間前ではない場合は判定をスキップ
         return;
     }
     
@@ -632,9 +639,6 @@ function calculateAndCheckDistance(nowLat, nowLng) {
         return;
     }
     
-    // 設定した日付・時刻を過ぎた場合のみ判定を実行
-    // ただし、判定は一度だけ実行する（既に判定済みの場合はスキップ）
-    // 注意：arrivalCheckedフラグはupdateTime関数またはwatchPositionコールバックで既に設定されている可能性がある
     // 既にクリアまたは時間切れの場合はスキップ
     if (window.cleared || window.charged) {
         return;
@@ -646,13 +650,7 @@ function calculateAndCheckDistance(nowLat, nowLng) {
         Math.sin(targetLat*R) * Math.sin(nowLat*R)
     );
 
-    // 判定済みフラグを設定（一度だけ判定を実行）
-    // updateTime関数またはwatchPositionコールバックで既に設定されている場合はスキップ
-    if (!window.arrivalChecked) {
-        window.arrivalChecked = true;
-    }
-
-    // 100m以内に到達していた場合
+    // 100m以内に到達していた場合（24時間前から期日までの間、一度でも入ればクリア）
     if(distance < 0.1) { // 0.1km = 100m
         // まずクリアフラグを設定（位置情報の更新を即座に停止）
         if(!window.cleared) {
@@ -686,9 +684,10 @@ function calculateAndCheckDistance(nowLat, nowLng) {
             // 予定の成功を記録（設定されていた課金額を阻止額として保存）
             recordEventResult('completed', 0, money);
         }
-    } else {
-        // 100m以内に到達していなかった場合（時間切れ）
-        if(!window.charged) {
+    } else if (currentTime > targetTime) {
+        // 期日を過ぎていて、100m以内に到達していなかった場合（時間切れ）
+        // 24時間前から期日までの間は判定を継続し、期日を過ぎた時点で判定
+        if(!window.charged && !window.cleared) {
             window.charged = true;
             
             // watchPositionを停止
@@ -720,6 +719,7 @@ function calculateAndCheckDistance(nowLat, nowLng) {
             recordEventResult('failed', money, 0);
         }
     }
+    // 24時間前から期日までの間で、まだ100m以内に入っていない場合は判定を継続（何もしない）
 }
 
 // 予定の結果を記録する関数
