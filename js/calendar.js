@@ -235,6 +235,19 @@ document.addEventListener('DOMContentLoaded', function() {
         checkAndCreateRecurringEvents(); // 定期予定のチェックと作成
         displayEvents();
         displayEventHistory();
+        
+        // 通知許可をリクエスト
+        if (typeof requestNotificationPermission === 'function') {
+            await requestNotificationPermission();
+        }
+        
+        // リマインダーをスケジュール
+        if (typeof scheduleAllReminders === 'function' && typeof getNotificationSettings === 'function') {
+            const settings = getNotificationSettings();
+            if (settings.enabled) {
+                scheduleAllReminders(savedEvents, settings.reminderMinutes || 60);
+            }
+        }
     }
     
     // 定期予定のチェックと作成
@@ -882,6 +895,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="event-actions">
                         <button class="btn btn-primary btn-small" onclick="selectEvent('${event.id}')">確認</button>
+                        <button class="btn btn-secondary btn-small" onclick="editEvent('${event.id}')" style="background: #2196F3; color: white; margin-right: 5px;">編集</button>
                         <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')" ${canDelete ? '' : 'disabled style="opacity: 0.5; cursor: not-allowed;"'} title="${canDelete ? '' : '終了時間が1時間半を切っているため削除できません'}">削除</button>
                     </div>
                 </div>
@@ -1423,6 +1437,65 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('予定入力フォームを表示しました');
     };
     
+    // 予定を編集する関数
+    window.editEvent = async function(eventId) {
+        await dataReadyPromise;
+
+        const event = savedEvents.find(e => e.id == eventId || e.firestoreId === eventId);
+        if (!event) {
+            alert('予定が見つかりません');
+            return;
+        }
+
+        // フォームに予定情報を設定
+        if (titleInput) titleInput.value = event.title || '';
+        
+        // 日時をdatetime-local形式に変換
+        if (deadlineInput) {
+            const eventDate = new Date(event.start || event.end);
+            const year = eventDate.getFullYear();
+            const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+            const day = String(eventDate.getDate()).padStart(2, '0');
+            const hours = String(eventDate.getHours()).padStart(2, '0');
+            const minutes = String(eventDate.getMinutes()).padStart(2, '0');
+            deadlineInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        // 定期予定の設定
+        if (isRecurringCheckbox) {
+            isRecurringCheckbox.checked = event.isRecurring || false;
+            if (event.isRecurring && recurringOptions) {
+                recurringOptions.style.display = 'block';
+            }
+        }
+
+        if (recurringPattern) {
+            recurringPattern.value = event.recurringPattern || 'weekly';
+        }
+
+        if (excludeWeekends) {
+            excludeWeekends.checked = event.excludeWeekends || false;
+        }
+
+        // 編集モードに設定
+        const editingEventIdInput = document.getElementById('editingEventId');
+        if (editingEventIdInput) {
+            editingEventIdInput.value = event.id || event.firestoreId || '';
+        }
+
+        const eventFormTitle = document.getElementById('eventFormTitle');
+        if (eventFormTitle) {
+            eventFormTitle.textContent = '予定を編集';
+        }
+
+        // フォームを表示
+        if (eventForm) {
+            eventForm.style.display = 'block';
+        }
+
+        updateRecurringDescription();
+    };
+
     // 予定履歴から項目を削除
     window.deleteHistoryItem = function(title) {
         if (!confirm(`「${title}」を履歴から削除しますか？`)) {
