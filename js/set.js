@@ -420,30 +420,73 @@ window.addEventListener("load", () => {
             if (!currentUserId) {
                 console.warn('定期予定の設定にcurrentUserIdが必要です');
             } else {
-                // 定期予定の場合、次週の予定情報を保存（予定終了時に作成される）
+                // 定期予定の場合、次回の予定情報を保存（予定終了時に作成される）
                 // 現在の予定の日時を取得（ローカル時間を保持）
                 const currentDeadline = new Date(eventDeadline);
                 
-                // 次週の日時を計算（同じ曜日・同じ時刻）
-                const nextWeekDeadline = new Date(currentDeadline);
-                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                // 繰り返しパターンを取得（デフォルトは毎週）
+                const recurringPattern = localStorage.getItem('recurringPattern') || 'weekly';
+                const excludeWeekends = localStorage.getItem('excludeWeekends') === 'true';
+                
+                // 繰り返しパターンに応じて次回の日時を計算
+                const nextDeadline = new Date(currentDeadline);
+                switch (recurringPattern) {
+                    case 'daily':
+                        nextDeadline.setDate(nextDeadline.getDate() + 1);
+                        break;
+                    case 'weekly':
+                        nextDeadline.setDate(nextDeadline.getDate() + 7);
+                        break;
+                    case 'biweekly':
+                        nextDeadline.setDate(nextDeadline.getDate() + 14);
+                        break;
+                    case 'monthly':
+                        nextDeadline.setMonth(nextDeadline.getMonth() + 1);
+                        break;
+                    default:
+                        nextDeadline.setDate(nextDeadline.getDate() + 7);
+                }
+                
+                // 土日祝を除外する設定がある場合、平日までスキップ
+                if (excludeWeekends) {
+                    // skipWeekendsAndHolidays関数を呼び出す（calendar.jsと同じロジック）
+                    let currentDate = new Date(nextDeadline);
+                    let daysChecked = 0;
+                    while (daysChecked < 30) {
+                        const dayOfWeek = currentDate.getDay();
+                        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                        const isHoliday = isJapaneseHolidayDate(currentDate);
+                        if (!isWeekend && !isHoliday) {
+                            nextDeadline.setTime(currentDate.getTime());
+                            break;
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                        daysChecked++;
+                    }
+                }
                 
                 // datetime-local形式に変換（ローカル時間を保持）
-                const year = nextWeekDeadline.getFullYear();
-                const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
-                const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
-                const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
-                const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
-                const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
+                const year = nextDeadline.getFullYear();
+                const month = String(nextDeadline.getMonth() + 1).padStart(2, '0');
+                const day = String(nextDeadline.getDate()).padStart(2, '0');
+                const hours = String(nextDeadline.getHours()).padStart(2, '0');
+                const minutes = String(nextDeadline.getMinutes()).padStart(2, '0');
+                const nextDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
                 
-                // 次週の予定情報を保存（予定終了時に作成される）
+                // 次回の予定情報を保存（予定終了時に作成される）
+                // 元の予定のIDを取得（check.jsで重複チェックに使用）
+                const originalEventId = selectedEventId || localStorage.getItem('selectedEventId');
                 const nextWeekEvent = {
+                    id: originalEventId, // 元の予定のIDを保存（重複チェック用）
+                    firestoreId: originalEventId, // 元の予定のFirestore IDを保存
                     title: eventTitle,
-                    deadline: nextWeekDeadlineStr, // datetime-local形式（ローカル時間を保持）
+                    deadline: nextDeadlineStr, // datetime-local形式（ローカル時間を保持）
                     lat: lat,
                     lng: lng,
                     money: setmoney,
-                    isRecurring: true
+                    isRecurring: true,
+                    recurringPattern: recurringPattern, // 繰り返しパターンを保存
+                    excludeWeekends: excludeWeekends // 土日祝除外フラグを保存
                 };
                 
                 // 定期予定情報を保存（calendar.jsで処理）
@@ -453,7 +496,13 @@ window.addEventListener("load", () => {
                 // 既存の定期予定をチェック（同じタイトルの定期予定が既にある場合は更新）
                 const existingIndex = recurringEvents.findIndex(e => e.title === eventTitle);
                 if (existingIndex >= 0) {
-                    recurringEvents[existingIndex] = nextWeekEvent;
+                    // 既存の予定を更新（IDも保持）
+                    recurringEvents[existingIndex] = {
+                        ...recurringEvents[existingIndex],
+                        ...nextWeekEvent,
+                        id: recurringEvents[existingIndex].id || nextWeekEvent.id, // 既存のIDを優先
+                        firestoreId: recurringEvents[existingIndex].firestoreId || nextWeekEvent.firestoreId
+                    };
                 } else {
                     recurringEvents.push(nextWeekEvent);
                 }

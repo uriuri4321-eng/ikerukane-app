@@ -1,4 +1,59 @@
 // check.js
+// 日本の祝日を判定する関数（簡易版、check.js用）
+function isJapaneseHolidayDateForCheck(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const dayOfWeek = date.getDay();
+    
+    // 固定祝日
+    const fixedHolidays = {
+        '1-1': '元日',
+        '2-11': '建国記念の日',
+        '4-29': '昭和の日',
+        '5-3': '憲法記念日',
+        '5-4': 'みどりの日',
+        '5-5': 'こどもの日',
+        '8-11': '山の日',
+        '11-3': '文化の日',
+        '11-23': '勤労感謝の日'
+    };
+    
+    // 2020年以降の天皇誕生日（2月23日）
+    if (year >= 2020 && month === 2 && day === 23) {
+        return true;
+    }
+    
+    // 固定祝日チェック
+    const key = `${month}-${day}`;
+    if (fixedHolidays[key]) {
+        return true;
+    }
+    
+    // 簡易版：移動祝日は基本的な判定のみ
+    // 成人の日（1月の第2月曜日）
+    if (month === 1 && dayOfWeek === 1 && day >= 8 && day <= 14) {
+        return true;
+    }
+    
+    // 海の日（7月23日、2020年以降）
+    if (year >= 2020 && month === 7 && day === 23) {
+        return true;
+    }
+    
+    // 敬老の日（9月の第3月曜日）
+    if (month === 9 && dayOfWeek === 1 && day >= 15 && day <= 21) {
+        return true;
+    }
+    
+    // スポーツの日（10月の第2月曜日）
+    if (month === 10 && dayOfWeek === 1 && day >= 8 && day <= 14) {
+        return true;
+    }
+    
+    return false;
+}
+
 let targetLat = Number(localStorage.getItem("Lat"));
 let targetLng = Number(localStorage.getItem("Lng"));
 let money = Number(localStorage.getItem("money"));
@@ -916,9 +971,45 @@ function createNextWeekRecurringEvent(event, currentUserId, eventDeadlineStr) {
         return;
     }
     
-    // 次週の日時を計算（同じ曜日・同じ時刻）
+    // 繰り返しパターンを取得（デフォルトは毎週）
+    const recurringPattern = event.recurringPattern || 'weekly';
+    const excludeWeekends = event.excludeWeekends || false;
+    
+    // 繰り返しパターンに応じて次回の日時を計算
     const nextWeekDeadline = new Date(currentDeadline);
-    nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+    switch (recurringPattern) {
+        case 'daily':
+            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 1);
+            break;
+        case 'weekly':
+            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+            break;
+        case 'biweekly':
+            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 14);
+            break;
+        case 'monthly':
+            nextWeekDeadline.setMonth(nextWeekDeadline.getMonth() + 1);
+            break;
+        default:
+            nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+    }
+    
+    // 土日祝を除外する設定がある場合、平日までスキップ
+    if (excludeWeekends) {
+        let currentDate = new Date(nextWeekDeadline);
+        let daysChecked = 0;
+        while (daysChecked < 30) {
+            const dayOfWeek = currentDate.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = isJapaneseHolidayDateForCheck(currentDate);
+            if (!isWeekend && !isHoliday) {
+                nextWeekDeadline.setTime(currentDate.getTime());
+                break;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+            daysChecked++;
+        }
+    }
     
     // datetime-local形式に変換（ローカル時間を保持）
     const year = nextWeekDeadline.getFullYear();
@@ -954,7 +1045,9 @@ function createNextWeekRecurringEvent(event, currentUserId, eventDeadlineStr) {
             lat: event.lat,
             lng: event.lng,
             money: event.money,
-            isRecurring: true
+            isRecurring: true,
+            recurringPattern: recurringPattern, // 繰り返しパターンを継承
+            excludeWeekends: excludeWeekends // 土日祝除外フラグを継承
         };
         
         savedEvents.push(newEvent);

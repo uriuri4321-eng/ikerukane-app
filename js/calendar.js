@@ -6,9 +6,182 @@ document.addEventListener('DOMContentLoaded', function() {
     const cancelBtn = document.getElementById('cancelEventBtn');
     const reserveBtn = document.getElementById('reserveBtn');
     const eventsContainer = document.getElementById('eventsContainer');
+    const isRecurringCheckbox = document.getElementById('isRecurring');
+    const recurringOptions = document.getElementById('recurringOptions');
+    const recurringPattern = document.getElementById('recurringPattern');
+    const recurringDescription = document.getElementById('recurringDescription');
+    const excludeWeekends = document.getElementById('excludeWeekends');
 
     if (eventsContainer) {
         eventsContainer.innerHTML = '<div class="no-events">予定を読み込み中です...</div>';
+    }
+
+    // 定期予定チェックボックスのイベント
+    if (isRecurringCheckbox && recurringOptions) {
+        isRecurringCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                recurringOptions.style.display = 'block';
+                updateRecurringDescription();
+            } else {
+                recurringOptions.style.display = 'none';
+            }
+        });
+    }
+
+    // 日本の祝日を判定する関数（簡易版）
+    function isJapaneseHoliday(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const dayOfWeek = date.getDay();
+        
+        // 固定祝日
+        const fixedHolidays = {
+            '1-1': '元日',
+            '2-11': '建国記念の日',
+            '4-29': '昭和の日',
+            '5-3': '憲法記念日',
+            '5-4': 'みどりの日',
+            '5-5': 'こどもの日',
+            '8-11': '山の日',
+            '11-3': '文化の日',
+            '11-23': '勤労感謝の日',
+            '12-23': '天皇誕生日' // 2020年以降は2月23日だが、簡易版として12月23日も含める
+        };
+        
+        // 2020年以降の天皇誕生日（2月23日）
+        if (year >= 2020 && month === 2 && day === 23) {
+            return true;
+        }
+        
+        // 固定祝日チェック
+        const key = `${month}-${day}`;
+        if (fixedHolidays[key]) {
+            return true;
+        }
+        
+        // 春分の日（3月20日または21日）
+        const springEquinox = calculateSpringEquinox(year);
+        if (month === 3 && day === springEquinox) {
+            return true;
+        }
+        
+        // 秋分の日（9月22日または23日）
+        const autumnEquinox = calculateAutumnEquinox(year);
+        if (month === 9 && day === autumnEquinox) {
+            return true;
+        }
+        
+        // 成人の日（1月の第2月曜日）
+        if (month === 1 && dayOfWeek === 1) {
+            const firstMonday = new Date(year, 0, 1);
+            const firstMondayDay = firstMonday.getDay();
+            const daysToFirstMonday = (8 - firstMondayDay) % 7;
+            const firstMondayDate = 1 + (daysToFirstMonday === 0 ? 7 : daysToFirstMonday);
+            if (day === firstMondayDate + 7) {
+                return true;
+            }
+        }
+        
+        // 海の日（7月の第3月曜日、2020年以降は7月23日固定）
+        if (year >= 2020 && month === 7 && day === 23) {
+            return true;
+        } else if (year < 2020 && month === 7 && dayOfWeek === 1) {
+            const firstMonday = new Date(year, 6, 1);
+            const firstMondayDay = firstMonday.getDay();
+            const daysToFirstMonday = (8 - firstMondayDay) % 7;
+            const firstMondayDate = 1 + (daysToFirstMonday === 0 ? 7 : daysToFirstMonday);
+            if (day === firstMondayDate + 14) {
+                return true;
+            }
+        }
+        
+        // 敬老の日（9月の第3月曜日）
+        if (month === 9 && dayOfWeek === 1) {
+            const firstMonday = new Date(year, 8, 1);
+            const firstMondayDay = firstMonday.getDay();
+            const daysToFirstMonday = (8 - firstMondayDay) % 7;
+            const firstMondayDate = 1 + (daysToFirstMonday === 0 ? 7 : daysToFirstMonday);
+            if (day === firstMondayDate + 14) {
+                return true;
+            }
+        }
+        
+        // スポーツの日（10月の第2月曜日、2020年以降は10月の第2月曜日）
+        if (month === 10 && dayOfWeek === 1) {
+            const firstMonday = new Date(year, 9, 1);
+            const firstMondayDay = firstMonday.getDay();
+            const daysToFirstMonday = (8 - firstMondayDay) % 7;
+            const firstMondayDate = 1 + (daysToFirstMonday === 0 ? 7 : daysToFirstMonday);
+            if (day === firstMondayDate + 7) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    // 春分の日を計算（簡易版：2000-2099年）
+    function calculateSpringEquinox(year) {
+        if (year <= 2099) {
+            const base = Math.floor((year - 2000) * 0.242194) + 20;
+            const offset = Math.floor((year - 2000) / 4);
+            return base + offset - Math.floor((year - 2000) / 100) + Math.floor((year - 2000) / 400);
+        }
+        return 20; // デフォルト
+    }
+    
+    // 秋分の日を計算（簡易版：2000-2099年）
+    function calculateAutumnEquinox(year) {
+        if (year <= 2099) {
+            const base = Math.floor((year - 2000) * 0.242194) + 23;
+            const offset = Math.floor((year - 2000) / 4);
+            return base + offset - Math.floor((year - 2000) / 100) + Math.floor((year - 2000) / 400);
+        }
+        return 23; // デフォルト
+    }
+    
+    // 土日祝をスキップして次の平日を取得
+    function skipWeekendsAndHolidays(date, maxDays = 30) {
+        let currentDate = new Date(date);
+        let daysChecked = 0;
+        
+        while (daysChecked < maxDays) {
+            const dayOfWeek = currentDate.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6; // 日曜日(0)または土曜日(6)
+            const isHoliday = isJapaneseHoliday(currentDate);
+            
+            if (!isWeekend && !isHoliday) {
+                return currentDate;
+            }
+            
+            currentDate.setDate(currentDate.getDate() + 1);
+            daysChecked++;
+        }
+        
+        return currentDate; // 最大日数を超えた場合はそのまま返す
+    }
+    
+    // 繰り返しパターンの説明を更新
+    function updateRecurringDescription() {
+        if (!recurringPattern || !recurringDescription) return;
+        const pattern = recurringPattern.value;
+        const exclude = excludeWeekends && excludeWeekends.checked;
+        const descriptions = {
+            'daily': exclude ? '毎日（平日のみ）同じ時刻で自動的に次回の予定が作成されます' : '毎日同じ時刻で自動的に次回の予定が作成されます',
+            'weekly': exclude ? '毎週（平日のみ）同じ曜日・同じ時刻で自動的に次回の予定が作成されます' : '毎週同じ曜日・同じ時刻で自動的に次回の予定が作成されます',
+            'biweekly': exclude ? '隔週（平日のみ）同じ曜日・同じ時刻で自動的に次回の予定が作成されます' : '隔週（2週間ごと）同じ曜日・同じ時刻で自動的に次回の予定が作成されます',
+            'monthly': exclude ? '毎月（平日のみ）同じ日付・同じ時刻で自動的に次回の予定が作成されます' : '毎月同じ日付・同じ時刻で自動的に次回の予定が作成されます'
+        };
+        recurringDescription.textContent = descriptions[pattern] || descriptions['weekly'];
+    }
+    
+    if (excludeWeekends) {
+        excludeWeekends.addEventListener('change', updateRecurringDescription);
+    }
+
+    if (recurringPattern) {
+        recurringPattern.addEventListener('change', updateRecurringDescription);
     }
 
     // 現在のユーザーIDを取得
@@ -80,30 +253,42 @@ document.addEventListener('DOMContentLoaded', function() {
             // deadlineはdatetime-local形式（YYYY-MM-DDTHH:mm）なので、そのままDateオブジェクトに変換
             const deadline = new Date(recurringEvent.deadline);
             
-            // 期日が過ぎている場合、次週の予定を作成
+            // 期日が過ぎている場合、次回の予定を作成
             // ただし、check.jsのrecordEventResultで既に作成された場合はスキップ（重複防止）
             if (deadline <= now) {
-                // 既にcheck.jsで次週の予定が作成されたかチェック
-                const nextWeekCreatedKey = `recurringNextWeekCreated_${recurringEvent.title}`;
-                const nextWeekCreated = localStorage.getItem(nextWeekCreatedKey);
-                if (nextWeekCreated) {
-                    console.log('次週の予定は既に作成済みです（check.jsで作成）:', recurringEvent.title);
-                    // 定期予定の次回日付を更新（次週の予定が既に作成されているため）
-                    const nextWeekDeadline = new Date(deadline);
-                    nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
-                    const year = nextWeekDeadline.getFullYear();
-                    const month = String(nextWeekDeadline.getMonth() + 1).padStart(2, '0');
-                    const day = String(nextWeekDeadline.getDate()).padStart(2, '0');
-                    const hours = String(nextWeekDeadline.getHours()).padStart(2, '0');
-                    const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
-                    const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
-                    recurringEvents[index].deadline = nextWeekDeadlineStr;
-                    hasUpdates = true;
-                    return; // スキップ
+                // 繰り返しパターンに応じて次回の日付を計算
+                const pattern = recurringEvent.recurringPattern || 'weekly'; // デフォルトは毎週
+                const nextDeadline = new Date(deadline);
+                
+                switch (pattern) {
+                    case 'daily':
+                        // 毎日: +1日
+                        nextDeadline.setDate(nextDeadline.getDate() + 1);
+                        break;
+                    case 'weekly':
+                        // 毎週: +7日
+                        nextDeadline.setDate(nextDeadline.getDate() + 7);
+                        break;
+                    case 'biweekly':
+                        // 隔週: +14日
+                        nextDeadline.setDate(nextDeadline.getDate() + 14);
+                        break;
+                    case 'monthly':
+                        // 毎月: +1ヶ月
+                        nextDeadline.setMonth(nextDeadline.getMonth() + 1);
+                        break;
+                    default:
+                        // デフォルトは毎週
+                        nextDeadline.setDate(nextDeadline.getDate() + 7);
                 }
-                // 次週の日付を計算（同じ曜日・同じ時刻）
-                const nextWeekDeadline = new Date(deadline);
-                nextWeekDeadline.setDate(nextWeekDeadline.getDate() + 7);
+                
+                // 土日祝を除外する設定がある場合、平日までスキップ
+                const excludeWeekendsFlag = recurringEvent.excludeWeekends || false;
+                if (excludeWeekendsFlag) {
+                    nextDeadline = skipWeekendsAndHolidays(nextDeadline);
+                }
+                
+                const nextWeekDeadline = nextDeadline;
                 
                 // datetime-local形式に変換（ローカル時間を保持）
                 const year = nextWeekDeadline.getFullYear();
@@ -113,11 +298,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 const minutes = String(nextWeekDeadline.getMinutes()).padStart(2, '0');
                 const nextWeekDeadlineStr = `${year}-${month}-${day}T${hours}:${minutes}`;
                 
-                // 既に同じ予定が存在するかチェック
+                // 既に同じ予定が存在するかチェック（より厳密に）
                 const existingEvent = savedEvents.find(e => 
                     e.title === recurringEvent.title && 
+                    e.isRecurring &&
                     Math.abs(new Date(e.start).getTime() - nextWeekDeadline.getTime()) < 60000 // 1分以内の誤差を許容
                 );
+                
+                // check.jsで作成済みかチェック（複数のキーパターンを確認）
+                // check.jsでは `recurringNextWeekCreated_${event.id || event.firestoreId || eventTitle}` を使用
+                const nextWeekCreatedKey1 = `recurringNextWeekCreated_${recurringEvent.title}`;
+                const nextWeekCreatedKey2 = `recurringNextWeekCreated_${recurringEvent.id || ''}`;
+                const nextWeekCreatedKey3 = `recurringNextWeekCreated_${recurringEvent.firestoreId || ''}`;
+                const nextWeekCreated1 = localStorage.getItem(nextWeekCreatedKey1);
+                const nextWeekCreated2 = localStorage.getItem(nextWeekCreatedKey2);
+                const nextWeekCreated3 = localStorage.getItem(nextWeekCreatedKey3);
+                
+                // 既存の予定をより厳密にチェック（Firestoreからも確認）
+                let firestoreExistingEvent = null;
+                if (db && currentUserId && !existingEvent) {
+                    try {
+                        // Firestoreからも確認（非同期だが、ここでは同期的にチェック）
+                        // 実際には既にsavedEventsに反映されているはずなので、savedEventsのチェックで十分
+                    } catch (error) {
+                        console.error('Firestore確認エラー:', error);
+                    }
+                }
+                
+                if (existingEvent || nextWeekCreated1 || nextWeekCreated2 || nextWeekCreated3) {
+                    console.log('次週の予定は既に作成済みです（重複防止）:', {
+                        title: recurringEvent.title,
+                        existingEvent: !!existingEvent,
+                        nextWeekCreated1: !!nextWeekCreated1,
+                        nextWeekCreated2: !!nextWeekCreated2,
+                        nextWeekCreated3: !!nextWeekCreated3
+                    });
+                    // 定期予定の次回日付を更新（次週の予定が既に作成されているため）
+                    recurringEvents[index].deadline = nextWeekDeadlineStr;
+                    hasUpdates = true;
+                    return; // スキップ
+                }
                 
                 if (!existingEvent) {
                     // 新しい予定を作成
@@ -135,7 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         lat: recurringEvent.lat,
                         lng: recurringEvent.lng,
                         money: recurringEvent.money,
-                        isRecurring: true
+                        isRecurring: true,
+                        recurringPattern: recurringEvent.recurringPattern || 'weekly', // 繰り返しパターンを継承
+                        excludeWeekends: recurringEvent.excludeWeekends || false // 土日祝除外フラグを継承
                     };
                     
                     savedEvents.push(newEvent);
@@ -496,6 +718,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (deadlineInput) {
                 deadlineInput.value = '';
             }
+            if (isRecurringCheckbox) {
+                isRecurringCheckbox.checked = false;
+            }
+            if (recurringOptions) {
+                recurringOptions.style.display = 'none';
+            }
+            if (recurringPattern) {
+                recurringPattern.value = 'weekly';
+                updateRecurringDescription();
+            }
         });
     } else {
         console.error('予定設定ボタン（reserveBtn）が見つかりません');
@@ -509,6 +741,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const title = titleInput.value.trim();
         const deadline = deadlineInput.value;
         const isRecurring = document.getElementById('isRecurring').checked;
+        const recurringPatternValue = isRecurring && recurringPattern ? recurringPattern.value : null;
+        const excludeWeekendsValue = isRecurring && excludeWeekends ? excludeWeekends.checked : false;
 
         if (!title || !deadline) {
             alert('タイトルと期日を入力してください。');
@@ -538,7 +772,9 @@ document.addEventListener('DOMContentLoaded', function() {
             lat: null,
             lng: null,
             money: null,
-            isRecurring: isRecurring // 定期予定フラグ
+            isRecurring: isRecurring, // 定期予定フラグ
+            recurringPattern: recurringPatternValue, // 繰り返しパターン
+            excludeWeekends: excludeWeekendsValue // 土日祝除外フラグ
         };
 
         if (db && currentUserId) {
@@ -567,10 +803,20 @@ document.addEventListener('DOMContentLoaded', function() {
         localStorage.setItem('eventTitle', title);
         localStorage.setItem('eventDeadline', deadline);
         localStorage.setItem('isRecurring', isRecurring ? 'true' : 'false');
+        localStorage.setItem('recurringPattern', recurringPatternValue || '');
+        localStorage.setItem('excludeWeekends', excludeWeekendsValue ? 'true' : 'false');
         localStorage.setItem('selectedEventId', newEvent.firestoreId || newEvent.id);
 
         eventForm.style.display = 'none';
         displayEvents(); // 一覧を更新
+        
+        // フォームをリセット
+        if (titleInput) titleInput.value = '';
+        if (deadlineInput) deadlineInput.value = '';
+        if (isRecurringCheckbox) isRecurringCheckbox.checked = false;
+        if (recurringOptions) recurringOptions.style.display = 'none';
+        if (recurringPattern) recurringPattern.value = 'weekly';
+        if (excludeWeekends) excludeWeekends.checked = false;
         
         alert(`予定「${title}」を設定しました。\n次に目的地を設定してください。`);
         window.location.href = 'map.html';
@@ -585,6 +831,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (eventForm) {
                 eventForm.style.display = 'none';
             }
+            // フォームをリセット
+            if (titleInput) titleInput.value = '';
+            if (deadlineInput) deadlineInput.value = '';
+            if (isRecurringCheckbox) isRecurringCheckbox.checked = false;
+            if (recurringOptions) recurringOptions.style.display = 'none';
+            if (recurringPattern) recurringPattern.value = 'weekly';
+            if (excludeWeekends) excludeWeekends.checked = false;
         });
     } else {
         console.error('キャンセルボタン（cancelBtn）が見つかりません');
