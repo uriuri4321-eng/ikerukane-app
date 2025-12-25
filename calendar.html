@@ -1074,15 +1074,9 @@
       
       <div class="account-info-section">
         <h4>⚙️ 操作</h4>
-        <div class="notification-setting" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span>🔔</span>
-            <label for="notificationToggle" style="margin: 0; cursor: pointer; font-size: 14px;">通知を有効にする</label>
-          </div>
-          <input type="checkbox" id="notificationToggle" style="width: 20px; height: 20px; cursor: pointer;">
-        </div>
         <button class="menu-action-btn view-completed" onclick="viewCompletedEvents()">✅ 終了した予定一覧を見る</button>
         <button class="menu-action-btn account-settings" onclick="showAccountSettings()">👤 アカウント設定</button>
+        <button class="menu-action-btn" onclick="window.location.href='notification-settings.html'" style="background: #2196F3; color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; margin-bottom: 10px;">🔔 通知設定</button>
         <button class="menu-action-btn back-to-title" onclick="goToTitlePage()">🏠 タイトルへ戻る</button>
         <button class="menu-action-btn logout" onclick="logout()">🚪 ログアウト</button>
       </div>

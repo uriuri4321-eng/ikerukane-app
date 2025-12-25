@@ -100,6 +100,106 @@ function scheduleReminder(event, reminderMinutes = 60) {
     return timeoutId;
 }
 
+// 追い通知をスケジュール（予定の10分前に目的地に到着していない場合）
+function scheduleFollowUpNotification(event) {
+    if (!event || !event.start) {
+        console.error('予定情報が不正です');
+        return null;
+    }
+
+    // 追い通知設定を確認
+    const settings = getNotificationSettings();
+    if (!settings.followUpNotificationEnabled) {
+        console.log('追い通知が無効です');
+        return null;
+    }
+
+    const eventDate = new Date(event.start);
+    const now = new Date();
+    const followUpTime = new Date(eventDate.getTime() - 10 * 60 * 1000); // 10分前
+
+    // 既に10分前を過ぎている場合はスキップ
+    if (followUpTime <= now) {
+        console.log('追い通知時刻を過ぎています');
+        return null;
+    }
+
+    const timeUntilFollowUp = followUpTime.getTime() - now.getTime();
+
+    console.log('追い通知をスケジュールしました:', {
+        eventTitle: event.title,
+        followUpTime: followUpTime.toLocaleString('ja-JP'),
+        timeUntilFollowUp: Math.round(timeUntilFollowUp / 1000 / 60) + '分後'
+    });
+
+    const timeoutId = setTimeout(async () => {
+        // 現在位置を取得して、目的地に到着しているかチェック
+        if (navigator.geolocation && event.lat && event.lng) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    const currentLat = position.coords.latitude;
+                    const currentLng = position.coords.longitude;
+                    
+                    // ハーバーサイン公式で距離を計算
+                    const R = 6371000; // 地球の半径（メートル）
+                    const dLat = (currentLat - event.lat) * Math.PI / 180;
+                    const dLng = (currentLng - event.lng) * Math.PI / 180;
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                              Math.cos(event.lat * Math.PI / 180) * Math.cos(currentLat * Math.PI / 180) *
+                              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const distance = R * c; // メートル
+
+                    // 100m以内に到着していない場合、追い通知を送る
+                    if (distance > 100) {
+                        const title = `⚠️ 予定まで10分前です`;
+                        const body = `「${event.title}」まであと10分です。\nまだ目的地に到着していません。急いでください！`;
+                        
+                        sendNotification(title, {
+                            body: body,
+                            requireInteraction: true
+                        });
+
+                        // 追い通知を実行済みとしてマーク
+                        const followUpKey = `followUp_${event.id || event.firestoreId}`;
+                        localStorage.setItem(followUpKey, 'sent');
+                    } else {
+                        console.log('既に目的地に到着しているため、追い通知をスキップします');
+                    }
+                },
+                function(error) {
+                    // 位置情報取得に失敗した場合でも追い通知を送る
+                    const title = `⚠️ 予定まで10分前です`;
+                    const body = `「${event.title}」まであと10分です。\n目的地に到着しているか確認してください。`;
+                    
+                    sendNotification(title, {
+                        body: body,
+                        requireInteraction: true
+                    });
+
+                    const followUpKey = `followUp_${event.id || event.firestoreId}`;
+                    localStorage.setItem(followUpKey, 'sent');
+                },
+                { timeout: 5000 }
+            );
+        } else {
+            // 位置情報が取得できない場合でも追い通知を送る
+            const title = `⚠️ 予定まで10分前です`;
+            const body = `「${event.title}」まであと10分です。\n目的地に到着しているか確認してください。`;
+            
+            sendNotification(title, {
+                body: body,
+                requireInteraction: true
+            });
+
+            const followUpKey = `followUp_${event.id || event.firestoreId}`;
+            localStorage.setItem(followUpKey, 'sent');
+        }
+    }, timeUntilFollowUp);
+
+    return timeoutId;
+}
+
 // すべての予定のリマインダーをスケジュール
 function scheduleAllReminders(events, reminderMinutes = 60) {
     if (!Array.isArray(events)) {
@@ -121,6 +221,11 @@ function scheduleAllReminders(events, reminderMinutes = 60) {
 
     activeEvents.forEach(event => {
         scheduleReminder(event, reminderMinutes);
+        // 追い通知もスケジュール（設定が有効な場合）
+        const settings = getNotificationSettings();
+        if (settings.followUpNotificationEnabled !== false) {
+            scheduleFollowUpNotification(event);
+        }
     });
 
     console.log(`${activeEvents.length}件の予定にリマインダーを設定しました`);
@@ -149,7 +254,7 @@ function getNotificationSettings() {
         return {
             enabled: true,
             reminderMinutes: 60, // デフォルトは1時間前
-            soundEnabled: false
+            followUpNotificationEnabled: true // 追い通知はデフォルトでON
         };
     }
 
@@ -163,7 +268,7 @@ function getNotificationSettings() {
     return {
         enabled: true,
         reminderMinutes: 60,
-        soundEnabled: false
+        followUpNotificationEnabled: true
     };
 }
 
@@ -171,6 +276,7 @@ function getNotificationSettings() {
 window.requestNotificationPermission = requestNotificationPermission;
 window.sendNotification = sendNotification;
 window.scheduleReminder = scheduleReminder;
+window.scheduleFollowUpNotification = scheduleFollowUpNotification;
 window.scheduleAllReminders = scheduleAllReminders;
 window.clearAllReminders = clearAllReminders;
 window.saveNotificationSettings = saveNotificationSettings;

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+    <title>イケルカネ - 通知設定</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <!-- 時間帯に応じた背景色変更 -->
+    <script src="js/background-time.js"></script>
+    <style>
+        /* CSS変数の定義 */
+        :root {
+            --bg-gradient-start: #667eea;
+            --bg-gradient-end: #764ba2;
+            --bg-white: #ffffff;
+            --primary-color: #4CAF50;
+            --primary-dark: #45a049;
+            --secondary-color: #FF9800;
+            --secondary-dark: #F57C00;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.2);
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-xl: 25px;
+            --transition-normal: 0.3s ease;
+        }
+
+        html {
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%) !important;
+            background-attachment: fixed !important;
+            min-height: 100vh !important;
+        }
+
+        body {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            background-color: transparent !important;
+            background: transparent !important;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .notification-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--bg-white);
+            border-radius: var(--radius-lg);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .back-button {
+            background: var(--primary-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius-xl);
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: all var(--transition-normal);
+        }
+
+        .back-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .setting-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .setting-section h2 {
+            margin: 0 0 20px 0;
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            flex: 1;
+            color: var(--text-primary);
+            font-size: 15px;
+        }
+
+        .setting-label small {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .setting-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--primary-color);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: left 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active::after {
+            left: 26px;
+        }
+
+        .number-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius-md);
+            font-size: 15px;
+            text-align: center;
+        }
+
+        .number-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .save-button {
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 16px 32px;
+            border: none;
+            border-radius: var(--radius-xl);
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .save-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+
+        .save-button:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 480px) {
+            .notification-container {
+                padding: 24px;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notification-container">
+        <div class="page-header">
+            <h1>🔔 通知設定</h1>
+            <a href="calendar.html" class="back-button">戻る</a>
+        </div>
+
+        <div class="setting-section">
+            <h2>基本設定</h2>
+            <div class="setting-item">
+                <div class="setting-label">
+                    通知を有効にする
+                    <small>予定のリマインダー通知を受け取ります</small>
+                </div>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="notificationEnabled"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-section">
+            <h2>リマインダー設定</h2>
+            <div class="setting-item">
+                <div class="setting-label">
+                    通知を送る時間
+                    <small>予定の何時間前に通知を送りますか？</small>
+                </div>
+                <div class="setting-control">
+                    <input type="number" id="reminderHours" class="number-input" min="0.5" max="24" step="0.5" value="1">
+                    <span>時間前</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="setting-section">
+            <h2>追い通知設定</h2>
+            <div class="setting-item">
+                <div class="setting-label">
+                    追い通知を有効にする
+                    <small>予定の10分前に目的地に到着していない場合、追加の通知を送ります</small>
+                </div>
+                <div class="setting-control">
+                    <div class="toggle-switch" id="followUpNotificationEnabled"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="save-button" id="saveButton">設定を保存</button>
+    </div>
+
+    <script src="js/notification.js"></script>
+    <script src="js/notification-settings.js"></script>
+</body>
+</html>
+
