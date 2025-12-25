@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const recurringPattern = document.getElementById('recurringPattern');
     const recurringDescription = document.getElementById('recurringDescription');
     const excludeWeekends = document.getElementById('excludeWeekends');
+    const enableNotification = document.getElementById('enableNotification');
 
     if (eventsContainer) {
         eventsContainer.innerHTML = '<div class="no-events">予定を読み込み中です...</div>';
@@ -756,6 +757,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const isRecurring = document.getElementById('isRecurring').checked;
         const recurringPatternValue = isRecurring && recurringPattern ? recurringPattern.value : null;
         const excludeWeekendsValue = isRecurring && excludeWeekends ? excludeWeekends.checked : false;
+        const enableNotificationValue = enableNotification ? enableNotification.checked : (typeof getNotificationSettings === 'function' ? getNotificationSettings().enabled : true);
 
         if (!title || !deadline) {
             alert('タイトルと期日を入力してください。');
@@ -787,7 +789,8 @@ document.addEventListener('DOMContentLoaded', function() {
             money: null,
             isRecurring: isRecurring, // 定期予定フラグ
             recurringPattern: recurringPatternValue, // 繰り返しパターン
-            excludeWeekends: excludeWeekendsValue // 土日祝除外フラグ
+            excludeWeekends: excludeWeekendsValue, // 土日祝除外フラグ
+            enableNotification: enableNotificationValue // 通知フラグ
         };
 
         if (db && currentUserId) {

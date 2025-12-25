@@ -114,6 +114,8 @@ function scheduleAllReminders(events, reminderMinutes = 60) {
     const activeEvents = events.filter(event => {
         if (!event.start) return false;
         const eventDate = new Date(event.start);
+        // enableNotificationがfalseの場合はスキップ
+        if (event.enableNotification === false) return false;
         return eventDate > now && event.status === 'active';
     });
 
