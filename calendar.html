@@ -763,6 +763,16 @@
         <input type="checkbox" id="enableNotification" style="width: 20px; height: 20px; cursor: pointer; flex-shrink: 0; margin: 0;">
         <label for="enableNotification" style="margin: 0; cursor: pointer; font-size: 14px; line-height: 1.5;">🔔 この予定のリマインダー通知を送る</label>
       </div>
+      <div id="notificationTimeOptions" class="form-group" style="display: none; margin-left: 28px; padding: 12px; background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+        <label for="notificationTime" style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 500;">通知を送る時間</label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <input type="number" id="notificationTime" min="0.5" max="24" step="0.5" value="1" style="width: 80px; padding: 8px; border: 2px solid #dee2e6; border-radius: 6px; font-size: 14px; text-align: center;">
+          <span style="font-size: 14px;">時間前</span>
+        </div>
+        <div style="margin-top: 8px; font-size: 12px; color: #666;">
+          <span>予定の何時間前に通知を送りますか？（0.5時間単位で設定可能）</span>
+        </div>
+      </div>
       <div class="form-buttons">
         <button id="saveEventBtn" class="btn btn-primary">設定</button>
         <button id="cancelEventBtn" class="btn btn-secondary">キャンセル</button>

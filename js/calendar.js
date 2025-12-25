@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const recurringDescription = document.getElementById('recurringDescription');
     const excludeWeekends = document.getElementById('excludeWeekends');
     const enableNotification = document.getElementById('enableNotification');
+    const notificationTimeOptions = document.getElementById('notificationTimeOptions');
+    const notificationTime = document.getElementById('notificationTime');
 
     if (eventsContainer) {
         eventsContainer.innerHTML = '<div class="no-events">予定を読み込み中です...</div>';
@@ -183,6 +185,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (recurringPattern) {
         recurringPattern.addEventListener('change', updateRecurringDescription);
+    }
+
+    // 通知チェックボックスのイベント
+    if (enableNotification && notificationTimeOptions) {
+        enableNotification.addEventListener('change', function() {
+            if (this.checked) {
+                notificationTimeOptions.style.display = 'block';
+            } else {
+                notificationTimeOptions.style.display = 'none';
+            }
+        });
+    }
+
+    // 通知時間入力の検証
+    if (notificationTime) {
+        notificationTime.addEventListener('input', function() {
+            let value = parseFloat(this.value);
+            if (isNaN(value) || value < 0.5) {
+                this.value = 0.5;
+            } else if (value > 24) {
+                this.value = 24;
+            }
+        });
     }
 
     // 現在のユーザーIDを取得
@@ -742,6 +767,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 recurringPattern.value = 'weekly';
                 updateRecurringDescription();
             }
+            
+            // 通知チェックボックスの初期状態を設定（通知設定に基づく）
+            if (enableNotification && typeof getNotificationSettings === 'function') {
+                const settings = getNotificationSettings();
+                enableNotification.checked = settings.enabled;
+                // 通知がONの場合、通知時間オプションを表示
+                if (settings.enabled && notificationTimeOptions) {
+                    notificationTimeOptions.style.display = 'block';
+                }
+                // 通知時間を設定（デフォルトは設定ページの値、または1時間）
+                if (notificationTime) {
+                    notificationTime.value = (settings.reminderMinutes || 60) / 60;
+                }
+            } else if (enableNotification) {
+                enableNotification.checked = true; // デフォルトはON
+                if (notificationTimeOptions) {
+                    notificationTimeOptions.style.display = 'block';
+                }
+                if (notificationTime) {
+                    notificationTime.value = 1; // デフォルトは1時間前
+                }
+            }
+            
+            // 編集モードをリセット
+            const editingEventIdInput = document.getElementById('editingEventId');
+            if (editingEventIdInput) editingEventIdInput.value = '';
+            const eventFormTitle = document.getElementById('eventFormTitle');
+            if (eventFormTitle) eventFormTitle.textContent = '予定詳細を入力';
         });
     } else {
         console.error('予定設定ボタン（reserveBtn）が見つかりません');
@@ -752,93 +805,186 @@ document.addEventListener('DOMContentLoaded', function() {
         saveBtn.addEventListener('click', async function() {
         await dataReadyPromise;
 
+        const editingEventIdInput = document.getElementById('editingEventId');
+        const isEditing = editingEventIdInput && editingEventIdInput.value !== '';
+
         const title = titleInput.value.trim();
         const deadline = deadlineInput.value;
         const isRecurring = document.getElementById('isRecurring').checked;
         const recurringPatternValue = isRecurring && recurringPattern ? recurringPattern.value : null;
         const excludeWeekendsValue = isRecurring && excludeWeekends ? excludeWeekends.checked : false;
         const enableNotificationValue = enableNotification ? enableNotification.checked : (typeof getNotificationSettings === 'function' ? getNotificationSettings().enabled : true);
+        // 通知時間を取得（時間単位から分単位に変換）
+        const notificationTimeValue = enableNotificationValue && notificationTime ? parseFloat(notificationTime.value) * 60 : null;
 
         if (!title || !deadline) {
             alert('タイトルと期日を入力してください。');
             return;
         }
 
-        // 過去の日時チェック
+        // 過去の日時チェック（編集時は現在の予定の日時を除外）
         const now = new Date();
         const deadlineDate = new Date(deadline);
         
-        if (deadlineDate <= now) {
+        if (!isEditing && deadlineDate <= now) {
             alert('未来の日時を設定してください。');
             return;
         }
 
-        const newEvent = {
-            id: Date.now().toString(),
-            firestoreId: null,
-            userId: currentUserId,
-            title: title,
-            start: deadline,
-            end: deadline,
-            allDay: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            status: 'active',
-            lat: null,
-            lng: null,
-            money: null,
-            isRecurring: isRecurring, // 定期予定フラグ
-            recurringPattern: recurringPatternValue, // 繰り返しパターン
-            excludeWeekends: excludeWeekendsValue, // 土日祝除外フラグ
-            enableNotification: enableNotificationValue // 通知フラグ
-        };
-
-        if (db && currentUserId) {
-            try {
-                const docRef = db.collection('events').doc();
-                const firestorePayload = {
-                    ...newEvent,
-                    id: docRef.id,
-                    firestoreId: docRef.id,
-                    userId: currentUserId,
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                await docRef.set(firestorePayload);
-                newEvent.id = docRef.id;
-                newEvent.firestoreId = docRef.id;
-            } catch (error) {
-                console.error('Firestoreへの予定保存エラー:', error);
+        if (isEditing) {
+            // 編集モード
+            const eventIndex = savedEvents.findIndex(e => e.id == editingEventIdInput.value || e.firestoreId === editingEventIdInput.value);
+            if (eventIndex === -1) {
+                alert('編集する予定が見つかりません');
+                return;
             }
+
+            const existingEvent = savedEvents[eventIndex];
+            const updatedEvent = {
+                ...existingEvent,
+                title: title,
+                start: deadline,
+                end: deadline,
+                updatedAt: new Date().toISOString(),
+                isRecurring: isRecurring,
+                recurringPattern: recurringPatternValue,
+                excludeWeekends: excludeWeekendsValue,
+                enableNotification: enableNotificationValue,
+                notificationMinutes: notificationTimeValue
+            };
+
+            // Firestoreに更新
+            if (db && currentUserId && existingEvent.firestoreId) {
+                try {
+                    const updateData = {
+                        title: title,
+                        start: deadline,
+                        end: deadline,
+                        isRecurring: isRecurring,
+                        recurringPattern: recurringPatternValue,
+                        excludeWeekends: excludeWeekendsValue,
+                        enableNotification: enableNotificationValue,
+                        notificationMinutes: notificationTimeValue,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await db.collection('events').doc(existingEvent.firestoreId).update(updateData);
+                    updatedEvent.firestoreId = existingEvent.firestoreId;
+                } catch (error) {
+                    console.error('Firestoreへの予定更新エラー:', error);
+                }
+            }
+
+            savedEvents[eventIndex] = updatedEvent;
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+
+            eventForm.style.display = 'none';
+            displayEvents();
+            
+            // フォームをリセット
+            resetEventForm();
+            
+            alert(`予定「${title}」を更新しました。`);
+        } else {
+            // 新規作成モード
+            const newEvent = {
+                id: Date.now().toString(),
+                firestoreId: null,
+                userId: currentUserId,
+                title: title,
+                start: deadline,
+                end: deadline,
+                allDay: false,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                status: 'active',
+                lat: null,
+                lng: null,
+                money: null,
+                isRecurring: isRecurring, // 定期予定フラグ
+                recurringPattern: recurringPatternValue, // 繰り返しパターン
+                excludeWeekends: excludeWeekendsValue, // 土日祝除外フラグ
+                enableNotification: enableNotificationValue, // 通知フラグ
+                notificationMinutes: notificationTimeValue // 個別の通知時間（分単位）
+            };
+
+            if (db && currentUserId) {
+                try {
+                    const docRef = db.collection('events').doc();
+                    const firestorePayload = {
+                        ...newEvent,
+                        id: docRef.id,
+                        firestoreId: docRef.id,
+                        userId: currentUserId,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await docRef.set(firestorePayload);
+                    newEvent.id = docRef.id;
+                    newEvent.firestoreId = docRef.id;
+                } catch (error) {
+                    console.error('Firestoreへの予定保存エラー:', error);
+                }
+            }
+
+            savedEvents.push(newEvent);
+            localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
+
+            // 最新の予定情報を保存（map.htmlで使用）
+            localStorage.setItem('eventTitle', title);
+            localStorage.setItem('eventDeadline', deadline);
+            localStorage.setItem('isRecurring', isRecurring ? 'true' : 'false');
+            localStorage.setItem('recurringPattern', recurringPatternValue || '');
+            localStorage.setItem('excludeWeekends', excludeWeekendsValue ? 'true' : 'false');
+            localStorage.setItem('selectedEventId', newEvent.firestoreId || newEvent.id);
+
+            eventForm.style.display = 'none';
+            displayEvents(); // 一覧を更新
+            
+            // フォームをリセット
+            resetEventForm();
+            
+            alert(`予定「${title}」を設定しました。\n次に目的地を設定してください。`);
+            window.location.href = 'map.html';
         }
+        });
+    } else {
+        console.error('保存ボタン（saveBtn）が見つかりません');
+    }
 
-        savedEvents.push(newEvent);
-        localStorage.setItem(eventsKey, JSON.stringify(savedEvents));
-
-        // 最新の予定情報を保存（map.htmlで使用）
-        localStorage.setItem('eventTitle', title);
-        localStorage.setItem('eventDeadline', deadline);
-        localStorage.setItem('isRecurring', isRecurring ? 'true' : 'false');
-        localStorage.setItem('recurringPattern', recurringPatternValue || '');
-        localStorage.setItem('excludeWeekends', excludeWeekendsValue ? 'true' : 'false');
-        localStorage.setItem('selectedEventId', newEvent.firestoreId || newEvent.id);
-
-        eventForm.style.display = 'none';
-        displayEvents(); // 一覧を更新
-        
-        // フォームをリセット
+    // フォームをリセットする関数
+    function resetEventForm() {
         if (titleInput) titleInput.value = '';
         if (deadlineInput) deadlineInput.value = '';
         if (isRecurringCheckbox) isRecurringCheckbox.checked = false;
         if (recurringOptions) recurringOptions.style.display = 'none';
         if (recurringPattern) recurringPattern.value = 'weekly';
         if (excludeWeekends) excludeWeekends.checked = false;
+        const editingEventIdInput = document.getElementById('editingEventId');
+        if (editingEventIdInput) editingEventIdInput.value = '';
+        const eventFormTitle = document.getElementById('eventFormTitle');
+        if (eventFormTitle) eventFormTitle.textContent = '予定詳細を入力';
         
-        alert(`予定「${title}」を設定しました。\n次に目的地を設定してください。`);
-        window.location.href = 'map.html';
-        });
-    } else {
-        console.error('保存ボタン（saveBtn）が見つかりません');
+        // 通知チェックボックスの初期状態を設定（通知設定に基づく）
+        if (enableNotification && typeof getNotificationSettings === 'function') {
+            const settings = getNotificationSettings();
+            enableNotification.checked = settings.enabled;
+            // 通知がONの場合、通知時間オプションを表示
+            if (settings.enabled && notificationTimeOptions) {
+                notificationTimeOptions.style.display = 'block';
+            }
+            // 通知時間を設定（デフォルトは設定ページの値、または1時間）
+            if (notificationTime) {
+                notificationTime.value = (settings.reminderMinutes || 60) / 60;
+            }
+        } else if (enableNotification) {
+            enableNotification.checked = true; // デフォルトはON
+            if (notificationTimeOptions) {
+                notificationTimeOptions.style.display = 'block';
+            }
+            if (notificationTime) {
+                notificationTime.value = 1; // デフォルトは1時間前
+            }
+        }
     }
 
     // キャンセルボタンのクリックイベント
@@ -848,12 +994,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 eventForm.style.display = 'none';
             }
             // フォームをリセット
-            if (titleInput) titleInput.value = '';
-            if (deadlineInput) deadlineInput.value = '';
-            if (isRecurringCheckbox) isRecurringCheckbox.checked = false;
-            if (recurringOptions) recurringOptions.style.display = 'none';
-            if (recurringPattern) recurringPattern.value = 'weekly';
-            if (excludeWeekends) excludeWeekends.checked = false;
+            resetEventForm();
         });
     } else {
         console.error('キャンセルボタン（cancelBtn）が見つかりません');
@@ -1478,6 +1619,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (excludeWeekends) {
             excludeWeekends.checked = event.excludeWeekends || false;
+        }
+
+        // 通知設定の読み込み
+        if (enableNotification) {
+            // 通知設定がONの場合、通知チェックボックスを自動的にチェック
+            if (typeof getNotificationSettings === 'function') {
+                const settings = getNotificationSettings();
+                enableNotification.checked = settings.enabled ? (event.enableNotification !== false) : false;
+            } else {
+                enableNotification.checked = event.enableNotification !== false;
+            }
+            
+            // 通知チェックボックスがチェックされている場合、通知時間オプションを表示
+            if (enableNotification.checked && notificationTimeOptions) {
+                notificationTimeOptions.style.display = 'block';
+            }
+            
+            // 個別の通知時間を設定（なければデフォルト設定から取得）
+            if (notificationTime) {
+                if (event.notificationMinutes) {
+                    notificationTime.value = event.notificationMinutes / 60; // 分を時間に変換
+                } else if (typeof getNotificationSettings === 'function') {
+                    const settings = getNotificationSettings();
+                    notificationTime.value = (settings.reminderMinutes || 60) / 60;
+                } else {
+                    notificationTime.value = 1; // デフォルトは1時間前
+                }
+            }
         }
 
         // 編集モードに設定

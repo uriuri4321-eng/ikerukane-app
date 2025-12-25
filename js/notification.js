@@ -65,9 +65,12 @@ function scheduleReminder(event, reminderMinutes = 60) {
         return null;
     }
 
+    // 個別の通知時間が設定されている場合はそれを使用、なければデフォルト値を使用
+    const eventNotificationMinutes = event.notificationMinutes || reminderMinutes;
+    
     const eventDate = new Date(event.start);
     const now = new Date();
-    const reminderTime = new Date(eventDate.getTime() - reminderMinutes * 60 * 1000);
+    const reminderTime = new Date(eventDate.getTime() - eventNotificationMinutes * 60 * 1000);
 
     // 既にリマインダー時刻を過ぎている場合はスキップ
     if (reminderTime <= now) {
@@ -85,7 +88,10 @@ function scheduleReminder(event, reminderMinutes = 60) {
 
     const timeoutId = setTimeout(() => {
         const title = `⏰ 予定のリマインダー`;
-        const body = `「${event.title}」が${reminderMinutes}分後に始まります！\n期日: ${eventDate.toLocaleString('ja-JP')}`;
+        const hours = Math.floor(eventNotificationMinutes / 60);
+        const minutes = eventNotificationMinutes % 60;
+        const timeStr = hours > 0 ? `${hours}時間${minutes > 0 ? minutes + '分' : ''}` : `${eventNotificationMinutes}分`;
+        const body = `「${event.title}」が${timeStr}後に始まります！\n期日: ${eventDate.toLocaleString('ja-JP')}`;
         
         sendNotification(title, {
             body: body,
@@ -93,7 +99,7 @@ function scheduleReminder(event, reminderMinutes = 60) {
         });
 
         // リマインダーを実行済みとしてマーク
-        const reminderKey = `reminder_${event.id || event.firestoreId}_${reminderMinutes}`;
+        const reminderKey = `reminder_${event.id || event.firestoreId}_${eventNotificationMinutes}`;
         localStorage.setItem(reminderKey, 'sent');
     }, timeUntilReminder);
 
